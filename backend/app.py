@@ -2,38 +2,48 @@
 import os
 from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
-from dotenv import load_dotenv
+from config import config
 from models import db, Player
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, inspect
 import pandas as pd
 from io import BytesIO
 
-# === Chargement des variables d'environnement ===
-load_dotenv()
-DB_URL = os.getenv("DATABASE_URL", "sqlite:///sokrstat.db")
+# === Déterminer l'environnement ===
+env = os.environ.get('FLASK_ENV', 'development')
 
 # === Configuration de l'application Flask ===
 app = Flask(__name__)
-app.config["SQLALCHEMY_DATABASE_URI"] = DB_URL
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-app.config["JSON_SORT_KEYS"] = False
+app.config.from_object(config[env])
 
 # CORS
-CORS(app, resources={r"/api/*": {"origins": "*"}})
+CORS(app, resources={
+    r"/api/*": {
+        "origins": app.config.get('CORS_ORIGINS', '*')
+    }
+})
 
 # Initialisation de SQLAlchemy
 db.init_app(app)
 
 # ====================
-# 📌 PAGE D'ACCUEIL
+# PAGE D'ACCUEIL
 # ====================
 @app.route("/")
 def home():
-    total_players = Player.query.count()
+    """Page d'accueil de l'API"""
+    try:
+        total_players = Player.query.count()
+    except Exception as e:
+        total_players = 0
+        print(f"⚠️ Erreur DB: {e}")
+    
     return jsonify({
-        "message": "✅ API SokrStat Football Manager 2023",
+        "message": " API SokrStat Football Manager 2023",
         "version": "2.0",
+        "environment": env,
+        "debug": app.debug,
         "total_players": total_players,
+        "database": "connected" if total_players >= 0 else "error",
         "endpoints": {
             "players": "/api/players",
             "search": "/api/search?q=Messi",
@@ -45,7 +55,36 @@ def home():
     })
 
 # ====================
-# 📌 JOUEURS - LISTE AVEC FILTRES
+# INITIALISATION DB
+# ====================
+@app.route("/init-db")
+def init_db_route():
+    """Route temporaire pour initialiser la base de données"""
+    try:
+        # Créer toutes les tables
+        db.create_all()
+        
+        # Vérifier que ça a marché
+        inspector = inspect(db.engine)
+        tables = inspector.get_table_names()
+        
+        # Compter les joueurs
+        total_players = Player.query.count()
+        
+        return jsonify({
+            "message": "Base de données initialisée avec succès!",
+            "success": True,
+            "tables_created": tables,
+            "total_players": total_players
+        })
+    except Exception as e:
+        return jsonify({
+            "error": str(e),
+            "success": False
+        }), 500
+
+# ====================
+# JOUEURS - LISTE AVEC FILTRES
 # ====================
 @app.route("/api/players")
 def get_players():
@@ -96,7 +135,7 @@ def get_players():
     })
 
 # ====================
-# 📌 JOUEUR DÉTAILLÉ
+# JOUEUR DÉTAILLÉ
 # ====================
 @app.route("/api/players/<int:player_id>")
 def get_player(player_id):
@@ -105,7 +144,7 @@ def get_player(player_id):
     return jsonify(player.to_dict(include_all_stats=True))
 
 # ====================
-# 📌 RECHERCHE AVANCÉE
+# 🔍 RECHERCHE AVANCÉE
 # ====================
 @app.route("/api/search")
 def search_players():
@@ -127,7 +166,7 @@ def search_players():
     return jsonify([p.to_dict() for p in players])
 
 # ====================
-# 📌 COMPARATEUR
+# 🔄 COMPARATEUR
 # ====================
 @app.route("/api/compare", methods=["POST"])
 def compare_players():
@@ -151,7 +190,7 @@ def compare_players():
 
 
 # ====================
-# 📌 STATISTIQUES GLOBALES
+# 📊 STATISTIQUES GLOBALES
 # ====================
 @app.route("/api/stats/overview")
 def stats_overview():
@@ -280,7 +319,7 @@ def get_positions():
 
 
 # ====================
-# 📌 FILTRES - LISTES
+# 🔧 FILTRES - LISTES
 # ====================
 @app.route("/api/filters/nationalities")
 def list_nationalities():
@@ -319,7 +358,7 @@ def list_positions():
 
 
 # ====================
-# 📌 EXPORT CSV (10 PTS !)
+# 📥 EXPORT CSV 
 # ====================
 @app.route("/api/export/csv", methods=["POST"])
 def export_csv():
@@ -390,7 +429,7 @@ def export_csv():
 
 
 # ====================
-# 📌 GESTION ERREURS
+# ❌ GESTION ERREURS
 # ====================
 @app.errorhandler(404)
 def not_found(error):
@@ -404,16 +443,20 @@ def internal_error(error):
 
 
 # ====================
-# 📌 DÉMARRAGE SERVEUR
+# 🚀 DÉMARRAGE SERVEUR
 # ====================
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
+    
+    port = int(os.environ.get('PORT', 5000))
+    
     print("="*70)
-    print("🚀 API SokrStat Football Manager 2023")
+    print("⚽ API SokrStat Football Manager 2023")
     print("="*70)
-    print(f"📊 Base de données: {DB_URL}")
-    print(f"🌐 Serveur: http://127.0.0.1:5000")
-    print(f"📖 Documentation: http://127.0.0.1:5000")
+    print(f"Environnement: {env}")
+    print(f"Base de données: {app.config['SQLALCHEMY_DATABASE_URI'][:50]}...")
+    print(f"Serveur: http://0.0.0.0:{port}")
     print("="*70)
-    app.run(debug=True, port=5000)
+    
+    app.run(host='0.0.0.0', port=port, debug=app.debug)
