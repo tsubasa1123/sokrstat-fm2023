@@ -18,7 +18,7 @@ app.config.from_object(config[env])
 # CORS
 CORS(app, resources={
     r"/api/*": {
-        "origins": app.config.get('CORS_ORIGINS', '*')
+        "origins": ["https://sokrstat-fm2023.vercel.app", "http://localhost:5173", "*"]
     }
 })
 
