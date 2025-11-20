@@ -114,6 +114,167 @@ def get_players():
         return jsonify({"error": str(e)}), 500
 
 # ====================
+# 📥 EXPORT JOUEUR INDIVIDUEL
+# ====================
+@app.route("/api/players/<int:player_id>/export/<format>")
+def export_player(player_id, format):
+    """
+    Exporte les données d'un joueur unique
+    Formats: csv, excel, pdf
+    """
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import letter, A4
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import inch
+    
+    # Récupérer le joueur
+    player = Player.query.get_or_404(player_id)
+    player_data = player.to_dict(include_all_stats=True)
+    
+    if format == 'csv':
+        # CSV
+        output = BytesIO()
+        
+        # Préparer les données en format clé-valeur
+        rows = []
+        for key, value in player_data.items():
+            rows.append([key, str(value)])
+        
+        df = pd.DataFrame(rows, columns=['Attribut', 'Valeur'])
+        df.to_csv(output, index=False, encoding='utf-8-sig')
+        output.seek(0)
+        
+        return send_file(
+            output,
+            mimetype='text/csv',
+            as_attachment=True,
+            download_name=f'{player.name.replace(" ", "_")}_stats.csv'
+        )
+    
+    elif format == 'excel':
+        # Excel
+        output = BytesIO()
+        
+        # Créer un DataFrame
+        rows = []
+        for key, value in player_data.items():
+            rows.append({'Attribut': key, 'Valeur': str(value)})
+        
+        df = pd.DataFrame(rows)
+        
+        # Créer le fichier Excel avec mise en forme
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Statistiques')
+            
+            # Accéder à la feuille pour la mise en forme
+            workbook = writer.book
+            worksheet = writer.sheets['Statistiques']
+            
+            # Ajuster la largeur des colonnes
+            worksheet.column_dimensions['A'].width = 30
+            worksheet.column_dimensions['B'].width = 50
+        
+        output.seek(0)
+        
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=f'{player.name.replace(" ", "_")}_stats.xlsx'
+        )
+    
+    elif format == 'pdf':
+        # PDF
+        output = BytesIO()
+        
+        # Créer le document PDF
+        doc = SimpleDocTemplate(output, pagesize=A4)
+        elements = []
+        styles = getSampleStyleSheet()
+        
+        # Style personnalisé pour le titre
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=24,
+            textColor=colors.HexColor('#1e40af'),
+            spaceAfter=30,
+            alignment=1  # Centré
+        )
+        
+        # Titre
+        title = Paragraph(f"Fiche Joueur : {player.name}", title_style)
+        elements.append(title)
+        elements.append(Spacer(1, 0.3*inch))
+        
+        # Informations principales
+        info_style = styles['Normal']
+        main_info = [
+            f"<b>Âge:</b> {player.age} ans",
+            f"<b>Nationalité:</b> {player.nationality}",
+            f"<b>Club:</b> {player.club or 'N/A'}",
+            f"<b>Position:</b> {player.position}",
+            f"<b>Pied:</b> {player.preferred_foot or 'N/A'}",
+        ]
+        
+        for info in main_info:
+            elements.append(Paragraph(info, info_style))
+            elements.append(Spacer(1, 0.1*inch))
+        
+        elements.append(Spacer(1, 0.3*inch))
+        
+        # Tableau des attributs techniques
+        tech_data = [['Attribut', 'Valeur']]
+        
+        # Catégories d'attributs
+        categories = {
+            'Technique': ['corners', 'crossing', 'dribbling', 'finishing', 'first_touch', 
+                         'free_kicks', 'heading', 'long_shots', 'passing', 'technique'],
+            'Mental': ['aggression', 'anticipation', 'bravery', 'composure', 'concentration',
+                      'decisions', 'determination', 'flair', 'leadership', 'vision'],
+            'Physique': ['acceleration', 'agility', 'balance', 'jumping', 'pace', 
+                        'stamina', 'strength']
+        }
+        
+        for category, attrs in categories.items():
+            tech_data.append([f'=== {category} ===', ''])
+            for attr in attrs:
+                if hasattr(player, attr):
+                    value = getattr(player, attr)
+                    if value is not None:
+                        tech_data.append([attr.replace('_', ' ').title(), str(value)])
+        
+        # Créer le tableau
+        table = Table(tech_data, colWidths=[3*inch, 1.5*inch])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e40af')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        
+        elements.append(table)
+        
+        # Construire le PDF
+        doc.build(elements)
+        output.seek(0)
+        
+        return send_file(
+            output,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=f'{player.name.replace(" ", "_")}_stats.pdf'
+        )
+    
+    else:
+        return jsonify({"error": "Format non supporté. Utilisez csv, excel ou pdf"}), 400
+
+# ====================
 # JOUEUR DÉTAILLÉ
 # ====================
 @app.route("/api/players/<player_id>")
