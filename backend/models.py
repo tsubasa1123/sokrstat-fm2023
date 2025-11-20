@@ -132,8 +132,8 @@ class Player(db.Model):
     versatility = db.Column(db.Integer)  # Vers
     
     # Métadonnées
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def calculate_averages(self):
         """Calcule les moyennes d'attributs par catégorie"""
