@@ -15,12 +15,11 @@ env = os.environ.get('FLASK_ENV', 'development')
 app = Flask(__name__)
 app.config.from_object(config[env])
 
-# CORS
-CORS(app, resources={
-    r"/api/*": {
-        "origins": ["https://sokrstat-fm2023.vercel.app", "http://localhost:5173", "*"]
-    }
-})
+# CORS (Configuration permissive pour éviter les blocages Vercel)
+CORS(app, 
+     resources={r"/api/*": {"origins": "*"}},
+     allow_headers=["Content-Type", "Authorization"],
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
 
 # Initialisation de SQLAlchemy
 db.init_app(app)
@@ -38,10 +37,10 @@ def home():
         print(f"⚠️ Erreur DB: {e}")
     
     return jsonify({
-        "message": " API SokrStat Football Manager 2023",
-        "version": "2.0",
+        "message": "✅ API SokrStat Football Manager 2023",
+        "version": "2.1",
         "environment": env,
-        "debug": app.debug,
+        "debug": app.config.get('DEBUG', False),
         "total_players": total_players,
         "database": "connected" if total_players >= 0 else "error",
         "endpoints": {
@@ -55,92 +54,76 @@ def home():
     })
 
 # ====================
-# INITIALISATION DB
-# ====================
-@app.route("/init-db")
-def init_db_route():
-    """Route temporaire pour initialiser la base de données"""
-    try:
-        # Créer toutes les tables
-        db.create_all()
-        
-        # Vérifier que ça a marché
-        inspector = inspect(db.engine)
-        tables = inspector.get_table_names()
-        
-        # Compter les joueurs
-        total_players = Player.query.count()
-        
-        return jsonify({
-            "message": "Base de données initialisée avec succès!",
-            "success": True,
-            "tables_created": tables,
-            "total_players": total_players
-        })
-    except Exception as e:
-        return jsonify({
-            "error": str(e),
-            "success": False
-        }), 500
-
-# ====================
 # JOUEURS - LISTE AVEC FILTRES
 # ====================
 @app.route("/api/players")
 def get_players():
     """Récupère les joueurs avec filtres avancés"""
-    page = request.args.get("page", 1, type=int)
-    per_page = min(request.args.get("per_page", 50, type=int), 100)
-    
-    position = request.args.get("position")
-    nationality = request.args.get("nationality")
-    club = request.args.get("club")
-    min_age = request.args.get("min_age", type=int)
-    max_age = request.args.get("max_age", type=int)
-    
-    sort_by = request.args.get("sort_by", "name")
-    order = request.args.get("order", "asc")
-    
-    query = Player.query
-    
-    if position:
-        query = query.filter(Player.position == position)
-    if nationality:
-        query = query.filter(Player.nationality == nationality)
-    if club:
-        query = query.filter(Player.club.ilike(f"%{club}%"))
-    if min_age:
-        query = query.filter(Player.age >= min_age)
-    if max_age:
-        query = query.filter(Player.age <= max_age)
-    
-    sort_column = getattr(Player, sort_by, Player.name)
-    if order == "desc":
-        query = query.order_by(sort_column.desc())
-    else:
-        query = query.order_by(sort_column.asc())
-    
-    paginated = query.paginate(page=page, per_page=per_page, error_out=False)
-    
-    return jsonify({
-        "players": [p.to_dict() for p in paginated.items],
-        "pagination": {
-            "page": page,
-            "per_page": per_page,
-            "total": paginated.total,
-            "pages": paginated.pages,
-            "has_next": paginated.has_next,
-            "has_prev": paginated.has_prev
-        }
-    })
+    try:
+        page = request.args.get("page", 1, type=int)
+        per_page = min(request.args.get("per_page", 50, type=int), 100)
+        
+        position = request.args.get("position")
+        nationality = request.args.get("nationality")
+        club = request.args.get("club")
+        min_age = request.args.get("min_age", type=int)
+        max_age = request.args.get("max_age", type=int)
+        
+        sort_by = request.args.get("sort_by", "name")
+        order = request.args.get("order", "asc")
+        
+        query = Player.query
+        
+        if position:
+            query = query.filter(Player.position == position)
+        if nationality:
+            query = query.filter(Player.nationality == nationality)
+        if club:
+            query = query.filter(Player.club.ilike(f"%{club}%"))
+        if min_age:
+            query = query.filter(Player.age >= min_age)
+        if max_age:
+            query = query.filter(Player.age <= max_age)
+        
+        # Sécurité sur le tri
+        if hasattr(Player, sort_by):
+            sort_column = getattr(Player, sort_by)
+        else:
+            sort_column = Player.name
+
+        if order == "desc":
+            query = query.order_by(sort_column.desc())
+        else:
+            query = query.order_by(sort_column.asc())
+        
+        paginated = query.paginate(page=page, per_page=per_page, error_out=False)
+        
+        return jsonify({
+            "players": [p.to_dict() for p in paginated.items],
+            "pagination": {
+                "page": page,
+                "per_page": per_page,
+                "total": paginated.total,
+                "pages": paginated.pages,
+                "has_next": paginated.has_next,
+                "has_prev": paginated.has_prev
+            }
+        })
+    except Exception as e:
+        print(f"❌ Erreur /api/players: {e}")
+        return jsonify({"error": str(e)}), 500
 
 # ====================
 # JOUEUR DÉTAILLÉ
 # ====================
-@app.route("/api/players/<int:player_id>")
+@app.route("/api/players/<player_id>")
 def get_player(player_id):
-    """Récupère un joueur avec toutes ses statistiques"""
-    player = Player.query.get_or_404(player_id)
+    """Récupère un joueur par ID ou UID"""
+    # On essaie de trouver par ID numérique standard
+    player = Player.query.filter(
+        or_(Player.id == player_id, Player.id == int(player_id) if player_id.isdigit() else False)
+    ).first_or_404()
+    
     return jsonify(player.to_dict(include_all_stats=True))
 
 # ====================
@@ -149,17 +132,18 @@ def get_player(player_id):
 @app.route("/api/search")
 def search_players():
     """Recherche de joueurs par nom, club, ou nationalité"""
-    query = request.args.get("q", "").strip()
+    query_text = request.args.get("q", "").strip()
     limit = min(request.args.get("limit", 20, type=int), 50)
     
-    if not query:
+    if not query_text:
         return jsonify([])
     
+    # Recherche insensible à la casse
     players = Player.query.filter(
         or_(
-            Player.name.ilike(f"%{query}%"),
-            Player.club.ilike(f"%{query}%"),
-            Player.nationality.ilike(f"%{query}%")
+            Player.name.ilike(f"%{query_text}%"),
+            Player.club.ilike(f"%{query_text}%"),
+            Player.nationality.ilike(f"%{query_text}%")
         )
     ).limit(limit).all()
     
@@ -179,51 +163,58 @@ def compare_players():
     if len(ids) > 4:
         return jsonify({"error": "Maximum 4 joueurs"}), 400
     
+    # Conversion des IDs en format compatible DB
     players = Player.query.filter(Player.id.in_(ids)).all()
     
     if len(players) != len(ids):
         return jsonify({"error": "Un ou plusieurs joueurs introuvables"}), 404
     
     result = [p.to_dict(include_all_stats=True) for p in players]
-    
     return jsonify(result)
 
-
 # ====================
-# 📊 STATISTIQUES GLOBALES
+# 📊 STATISTIQUES GLOBALES 
 # ====================
 @app.route("/api/stats/overview")
 def stats_overview():
     """Vue d'ensemble des statistiques de la base"""
-    total_players = Player.query.count()
-    
-    nationalities_count = db.session.query(
-        func.count(func.distinct(Player.nationality))
-    ).scalar()
-    
-    clubs_count = db.session.query(
-        func.count(func.distinct(Player.club))
-    ).filter(Player.club.isnot(None)).scalar()
-    
-    avg_age = db.session.query(func.avg(Player.age)).filter(
-        Player.age.isnot(None)
-    ).scalar()
-    
-    positions = db.session.query(
-        Player.position,
-        func.count(Player.id).label('count')
-    ).filter(Player.position.isnot(None)).group_by(
-        Player.position
-    ).all()
-    
-    return jsonify({
-        "total_players": total_players,
-        "nationalities": nationalities_count,
-        "clubs": clubs_count,
-        "average_age": round(avg_age, 1) if avg_age else 0,
-        "positions": {pos: count for pos, count in positions}
-    })
-
+    try:
+        total_players = Player.query.count()
+        
+        nationalities_count = db.session.query(
+            func.count(func.distinct(Player.nationality))
+        ).scalar()
+        
+        clubs_count = db.session.query(
+            func.count(func.distinct(Player.club))
+        ).filter(Player.club.isnot(None)).scalar()
+        
+        # Correction du bug float/decimal
+        avg_age_query = db.session.query(func.avg(Player.age)).filter(
+            Player.age.isnot(None)
+        ).scalar()
+        
+        # On convertit explicitement en float pour que JSON le voit comme un nombre
+        # et que .toFixed() fonctionne sur le frontend
+        avg_age = float(avg_age_query) if avg_age_query else 0.0
+        
+        positions = db.session.query(
+            Player.position,
+            func.count(Player.id).label('count')
+        ).filter(Player.position.isnot(None)).group_by(
+            Player.position
+        ).all()
+        
+        return jsonify({
+            "total_players": total_players,
+            "nationalities": nationalities_count,
+            "clubs": clubs_count,
+            "average_age": round(avg_age, 1), # Renvoie un nombre (ex: 24.5)
+            "positions": {pos: count for pos, count in positions}
+        })
+    except Exception as e:
+        print(f"❌ Erreur Stats: {e}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/api/stats/top-players")
 def get_top_players():
@@ -232,6 +223,9 @@ def get_top_players():
     position = request.args.get("position")
     limit = min(request.args.get("limit", 10, type=int), 50)
     
+    # Vérifier si l'attribut existe dans le modèle ou via le mapping
+    # Pour simplifier, on utilise getattr sur le modèle, 
+    # mais attention : il faut utiliser le nom de l'attribut Python (ex: 'finishing')
     if not hasattr(Player, attribute):
         return jsonify({"error": f"Attribut '{attribute}' invalide"}), 400
     
@@ -246,15 +240,26 @@ def get_top_players():
         getattr(Player, attribute).desc()
     ).limit(limit).all()
     
-    return jsonify([{
-        "id": p.id,
-        "name": p.name,
-        "club": p.club,
-        "position": p.position,
-        "nationality": p.nationality,
-        "value": getattr(p, attribute)
-    } for p in top_players])
+    # On renvoie un format simplifié
+    result = []
+    for p in top_players:
+        val = getattr(p, attribute)
+        # Conversion sécu pour le JSON
+        try:
+            val = int(val)
+        except:
+            pass
+            
+        result.append({
+            "id": p.id,
+            "name": p.name,
+            "club": p.club,
+            "position": p.position,
+            "nationality": p.nationality,
+            "value": val
+        })
 
+    return jsonify(result)
 
 @app.route("/api/stats/nationalities")
 def get_nationalities():
@@ -277,7 +282,6 @@ def get_nationalities():
         for nat, count in nationalities
     ])
 
-
 @app.route("/api/stats/clubs")
 def get_clubs():
     """Top clubs par nombre de joueurs"""
@@ -299,7 +303,6 @@ def get_clubs():
         for club, count in clubs
     ])
 
-
 @app.route("/api/stats/positions")
 def get_positions():
     """Distribution des joueurs par position"""
@@ -317,7 +320,6 @@ def get_positions():
         for pos, count in positions
     ])
 
-
 # ====================
 # 🔧 FILTRES - LISTES
 # ====================
@@ -332,7 +334,6 @@ def list_nationalities():
     
     return jsonify([nat[0] for nat in nationalities])
 
-
 @app.route("/api/filters/clubs")
 def list_clubs():
     """Liste tous les clubs disponibles"""
@@ -343,7 +344,6 @@ def list_clubs():
     ).order_by(Player.club).all()
     
     return jsonify([club[0] for club in clubs])
-
 
 @app.route("/api/filters/positions")
 def list_positions():
@@ -356,30 +356,20 @@ def list_positions():
     
     return jsonify([pos[0] for pos in positions])
 
-
 # ====================
 # 📥 EXPORT CSV 
 # ====================
 @app.route("/api/export/csv", methods=["POST"])
 def export_csv():
-    """
-    Exporte les joueurs filtrés en CSV/Excel
-    Body JSON: {
-        "filters": {...},
-        "columns": ["name", "age", "club", ...],
-        "format": "csv" ou "excel"
-    }
-    """
+    """Exporte les joueurs filtrés en CSV/Excel"""
     data = request.get_json() or {}
     
     filters = data.get("filters", {})
     columns = data.get("columns", ["name", "age", "club", "position", "nationality"])
     export_format = data.get("format", "csv")
     
-    # Construction de la requête
     query = Player.query
     
-    # Application des filtres
     if filters.get("position"):
         query = query.filter(Player.position == filters["position"])
     if filters.get("nationality"):
@@ -391,7 +381,6 @@ def export_csv():
     if filters.get("max_age"):
         query = query.filter(Player.age <= filters["max_age"])
     
-    # Limite pour éviter exports trop lourds
     limit = min(filters.get("limit", 10000), 50000)
     players = query.limit(limit).all()
     
@@ -399,34 +388,38 @@ def export_csv():
     data_rows = []
     for p in players:
         row = {}
+        # On utilise le dictionnaire du joueur pour récupérer les bonnes valeurs mappées
+        p_dict = p.to_dict(include_all_stats=True)
+        
         for col in columns:
-            if hasattr(p, col):
+            # On essaie de récupérer depuis le dict, sinon direct attribut, sinon vide
+            if col in p_dict:
+                row[col] = p_dict[col]
+            elif hasattr(p, col):
                 row[col] = getattr(p, col)
+            else:
+                row[col] = ""
         data_rows.append(row)
     
     df = pd.DataFrame(data_rows)
-    
-    # Export
     output = BytesIO()
     
     if export_format == "excel":
         df.to_excel(output, index=False, engine='openpyxl')
         mimetype = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         filename = 'sokrstat_export.xlsx'
-    else:  # CSV par défaut
+    else:
         df.to_csv(output, index=False, encoding='utf-8-sig')
         mimetype = 'text/csv'
         filename = 'sokrstat_export.csv'
     
     output.seek(0)
-    
     return send_file(
         output,
         mimetype=mimetype,
         as_attachment=True,
         download_name=filename
     )
-
 
 # ====================
 # ❌ GESTION ERREURS
@@ -435,28 +428,19 @@ def export_csv():
 def not_found(error):
     return jsonify({"error": "Ressource introuvable"}), 404
 
-
 @app.errorhandler(500)
 def internal_error(error):
     db.session.rollback()
     return jsonify({"error": "Erreur interne du serveur"}), 500
-
 
 # ====================
 # 🚀 DÉMARRAGE SERVEUR
 # ====================
 if __name__ == "__main__":
     with app.app_context():
-        db.create_all()
-    
+        # On n'appelle plus create_all() car la table est gérée par le script d'import
+        # db.create_all()
+        pass
+        
     port = int(os.environ.get('PORT', 5000))
-    
-    print("="*70)
-    print("⚽ API SokrStat Football Manager 2023")
-    print("="*70)
-    print(f"Environnement: {env}")
-    print(f"Base de données: {app.config['SQLALCHEMY_DATABASE_URI'][:50]}...")
-    print(f"Serveur: http://0.0.0.0:{port}")
-    print("="*70)
-    
-    app.run(host='0.0.0.0', port=port, debug=app.debug)
+    app.run(host='0.0.0.0', port=port, debug=app.config.get('DEBUG', False))
