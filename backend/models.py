@@ -1,142 +1,141 @@
 # models.py - Football Manager 2023
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
+from sqlalchemy import or_
 
 db = SQLAlchemy()
 
 class Player(db.Model):
-    """Joueurs Football Manager 2023 - 91k+ joueurs"""
+    """Joueurs Football Manager 2023 - Adapté à la structure CSV importée"""
     __tablename__ = "players"
+    __table_args__ = {'extend_existing': True}
     
-    id = db.Column(db.Integer, primary_key=True)
-    uid = db.Column(db.String(20), unique=True, index=True)  # UID original
+    # === CLÉ PRIMAIRE (MAPPING CRUCIAL) ===
+    # Python voit "id", la DB voit "uid"
+    id = db.Column("uid", db.BigInteger, primary_key=True)
     
     # === INFORMATIONS DE BASE ===
-    name = db.Column(db.String(100), nullable=False, index=True)
-    date_of_birth = db.Column(db.String(20))  # DOB
-    age = db.Column(db.Integer, index=True)
-    nationality = db.Column(db.String(50), index=True)  # Nat
+    name = db.Column("name", db.Text, index=True)
+    date_of_birth = db.Column("dob", db.Text)         # Mappé sur 'dob'
+    age = db.Column("age", db.BigInteger, index=True)
+    nationality = db.Column("nat", db.Text, index=True) # Mappé sur 'nat'
     
     # Club et équipe
-    club = db.Column(db.String(100), index=True)
-    based = db.Column(db.String(100))  # Ville/Pays du club
-    team = db.Column(db.String(100))  # Équipe au sein du club
+    club = db.Column("club", db.Text, index=True)
+    based = db.Column("based", db.Text)
+    team = db.Column("team", db.Text)
     
     # Position
-    position = db.Column(db.String(50), index=True)  # GK, D, M, AM, ST
+    position = db.Column("position", db.Text, index=True)
     
-    # Physique
-    height = db.Column(db.Integer)  # en cm
-    weight = db.Column(db.Integer)  # en kg
+    # Physique (Texte dans la DB car importé du CSV avec unités parfois)
+    height = db.Column("height", db.Text) 
+    weight = db.Column("weight", db.Text)
     
     # Valeur et médias
-    transfer_value = db.Column(db.String(20))  # Ex: "€5M"
-    media_description = db.Column(db.Text)
-    media_handling = db.Column(db.String(50))  # Media-friendly, etc.
+    transfer_value = db.Column("transfer_value", db.Text)
+    media_description = db.Column("media_description", db.Text)
+    media_handling = db.Column("media_handling", db.Text)
     
     # Pied préféré
-    preferred_foot = db.Column(db.String(10))  # Left, Right, Either
-    left_foot = db.Column(db.Integer)  # 1-20
-    right_foot = db.Column(db.Integer)  # 1-20
+    preferred_foot = db.Column("preferred_foot", db.Text)
+    left_foot = db.Column("left_foot", db.Text)
+    right_foot = db.Column("right_foot", db.Text)
     
     # Blessures
-    injury_proneness = db.Column(db.Integer)  # Inj Pr
-    recent_injury = db.Column(db.String(20))  # Rc Injury
+    # injury_proneness = db.Column("inj_pr", db.BigInteger) # Souvent absent ou mal nommé
+    recent_injury = db.Column("rc_injury", db.Text)
     
     # Reconnaissance et informations
-    recommendation = db.Column(db.String(10))  # Rec
-    information = db.Column(db.String(20))  # Inf
+    recommendation = db.Column("rec", db.Text) # Mappé sur 'rec'
+    information = db.Column("inf", db.Text)    # Mappé sur 'inf'
     
     # === STATISTIQUES DE CARRIÈRE ===
-    caps = db.Column(db.Integer, default=0)  # Sélections nationales
+    caps = db.Column("caps", db.BigInteger, default=0)
+    career_apps = db.Column("at_apps", db.Text)       # at_apps
+    career_goals = db.Column("at_gls", db.Text)       # at_gls
+    league_apps = db.Column("at_lge_apps", db.Text)   # at_lge_apps
+    league_goals = db.Column("at_lge_gls", db.Text)   # at_lge_gls
+    youth_apps = db.Column("yth_apps", db.Text)
+    youth_goals = db.Column("yth_gls", db.Text)
     
-    # Toutes compétitions
-    career_apps = db.Column(db.Integer, default=0)  # AT Apps
-    career_goals = db.Column(db.Integer, default=0)  # AT Gls
+    # === ATTRIBUTS TECHNIQUES (MAPPING NOMS COURTS) ===
+    corners = db.Column("cor", db.BigInteger)
+    crossing = db.Column("cro", db.BigInteger)
+    dribbling = db.Column("dri", db.BigInteger)
+    finishing = db.Column("fin", db.BigInteger)
+    first_touch = db.Column("fir", db.BigInteger)
+    free_kicks = db.Column("fre", db.BigInteger)
+    heading = db.Column("hea", db.BigInteger)
+    long_shots = db.Column("lon", db.BigInteger)
+    long_throws = db.Column("l_th", db.BigInteger)
+    marking = db.Column("mar", db.BigInteger)
+    passing = db.Column("pas", db.BigInteger)
+    penalty_taking = db.Column("pen", db.BigInteger)
+    tackling = db.Column("tck", db.BigInteger)
+    technique = db.Column("tec", db.BigInteger)
     
-    # Championnat
-    league_apps = db.Column(db.Integer, default=0)  # AT Lge Apps
-    league_goals = db.Column(db.Integer, default=0)  # AT Lge Gls
+    # === ATTRIBUTS MENTAUX ===
+    aggression = db.Column("agg", db.BigInteger)
+    anticipation = db.Column("ant", db.BigInteger)
+    bravery = db.Column("bra", db.BigInteger)
+    composure = db.Column("cmp", db.BigInteger) # cmp
+    concentration = db.Column("cnt", db.BigInteger) # cnt
+    decisions = db.Column("dec", db.BigInteger)
+    determination = db.Column("det", db.BigInteger)
+    flair = db.Column("fla", db.BigInteger)
+    leadership = db.Column("ldr", db.BigInteger)
+    off_the_ball = db.Column("otb", db.BigInteger)
+    positioning = db.Column("pos", db.BigInteger) # Attention: 'pos' (attribut) vs 'position' (rôle)
+    teamwork = db.Column("tea", db.BigInteger)
+    vision = db.Column("vis", db.BigInteger)
+    work_rate = db.Column("wor", db.BigInteger)
     
-    # Jeunes
-    youth_apps = db.Column(db.Integer, default=0)  # Yth Apps
-    youth_goals = db.Column(db.Integer, default=0)  # Yth Gls
+    # === ATTRIBUTS PHYSIQUES ===
+    acceleration = db.Column("acc", db.BigInteger)
+    agility = db.Column("agi", db.BigInteger)
+    balance = db.Column("bal", db.BigInteger)
+    jumping = db.Column("jum", db.BigInteger)
+    natural_fitness = db.Column("nat_1", db.BigInteger) # nat_1 car nat est pris par nationalité
+    pace = db.Column("pac", db.BigInteger)
+    stamina = db.Column("sta", db.BigInteger)
+    strength = db.Column("str", db.BigInteger)
     
-    # === ATTRIBUTS TECHNIQUES (1-20) ===
-    corners = db.Column(db.Integer)  # Cor
-    crossing = db.Column(db.Integer)  # Cro
-    dribbling = db.Column(db.Integer)  # Dri
-    finishing = db.Column(db.Integer)  # Fin
-    first_touch = db.Column(db.Integer)  # Fir
-    free_kicks = db.Column(db.Integer)  # Fre
-    heading = db.Column(db.Integer)  # Hea
-    long_shots = db.Column(db.Integer)  # Lon
-    long_throws = db.Column(db.Integer)  # L Th
-    marking = db.Column(db.Integer)  # Mar
-    passing = db.Column(db.Integer)  # Pas
-    penalty_taking = db.Column(db.Integer)  # Pen
-    tackling = db.Column(db.Integer)  # Tck
-    technique = db.Column(db.Integer)  # Tec
-    
-    # === ATTRIBUTS MENTAUX (1-20) ===
-    aggression = db.Column(db.Integer)  # Agg
-    anticipation = db.Column(db.Integer)  # Ant
-    bravery = db.Column(db.Integer)  # Bra
-    composure = db.Column(db.Integer)  # Cmp
-    concentration = db.Column(db.Integer)  # Cnt
-    decisions = db.Column(db.Integer)  # Dec
-    determination = db.Column(db.Integer)  # Det
-    flair = db.Column(db.Integer)  # Fla
-    leadership = db.Column(db.Integer)  # Ldr
-    off_the_ball = db.Column(db.Integer)  # OtB
-    positioning = db.Column(db.Integer)  # Pos
-    teamwork = db.Column(db.Integer)  # Tea
-    vision = db.Column(db.Integer)  # Vis
-    work_rate = db.Column(db.Integer)  # Wor
-    
-    # === ATTRIBUTS PHYSIQUES (1-20) ===
-    acceleration = db.Column(db.Integer)  # Acc
-    agility = db.Column(db.Integer)  # Agi
-    balance = db.Column(db.Integer)  # Bal
-    jumping = db.Column(db.Integer)  # Jum
-    natural_fitness = db.Column(db.Integer)  # Nat (confusion avec Nationalité)
-    pace = db.Column(db.Integer)  # Pac
-    stamina = db.Column(db.Integer)  # Sta
-    strength = db.Column(db.Integer)  # Str
-    
-    # === ATTRIBUTS GARDIENS (1-20) ===
-    aerial_reach = db.Column(db.Integer)  # Aer
-    command_of_area = db.Column(db.Integer)  # Cmd
-    communication = db.Column(db.Integer)  # Com
-    eccentricity = db.Column(db.Integer)  # Ecc
-    handling = db.Column(db.Integer)  # Han
-    kicking = db.Column(db.Integer)  # Kic
-    one_on_ones = db.Column(db.Integer)  # 1v1
-    reflexes = db.Column(db.Integer)  # Ref
-    rushing_out = db.Column(db.Integer)  # TRO
-    tendency_to_punch = db.Column(db.Integer)  # Pun
-    throwing = db.Column(db.Integer)  # Thr
+    # === ATTRIBUTS GARDIENS ===
+    aerial_reach = db.Column("aer", db.BigInteger)
+    command_of_area = db.Column("cmd", db.BigInteger)
+    communication = db.Column("com", db.BigInteger)
+    eccentricity = db.Column("ecc", db.BigInteger)
+    handling = db.Column("han", db.BigInteger)
+    kicking = db.Column("kic", db.BigInteger)
+    one_on_ones = db.Column("1v1", db.BigInteger) # Attention au nommage chiffre
+    reflexes = db.Column("ref", db.BigInteger)
+    rushing_out = db.Column("tro", db.BigInteger) # tro (Tendency to Rush Out)
+    tendency_to_punch = db.Column("pun", db.BigInteger)
+    throwing = db.Column("thr", db.BigInteger)
     
     # === ATTRIBUTS CACHÉS / PERSONNALITÉ ===
-    adaptability = db.Column(db.Integer)  # Ada
-    ambition = db.Column(db.Integer)  # Amb
-    consistency = db.Column(db.Integer)  # Cons
-    controversy = db.Column(db.Integer)  # Cont
-    dirtiness = db.Column(db.Integer)  # Dirt
-    important_matches = db.Column(db.Integer)  # Imp M
-    loyalty = db.Column(db.Integer)  # Loy
-    pressure = db.Column(db.Integer)  # Pres
-    professionalism = db.Column(db.Integer)  # Prof
-    sportsmanship = db.Column(db.Integer)  # Spor
-    temperament = db.Column(db.Integer)  # Temp
-    versatility = db.Column(db.Integer)  # Vers
-    
-    # Métadonnées
-    # created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    # updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    adaptability = db.Column("ada", db.BigInteger)
+    ambition = db.Column("amb", db.BigInteger)
+    consistency = db.Column("cons", db.BigInteger)
+    controversy = db.Column("cont", db.BigInteger) # Attention si conflit nom
+    dirtiness = db.Column("dirt", db.BigInteger)
+    important_matches = db.Column("imp_m", db.BigInteger)
+    loyalty = db.Column("loy", db.BigInteger)
+    pressure = db.Column("pres", db.BigInteger)
+    professionalism = db.Column("prof", db.BigInteger)
+    sportsmanship = db.Column("spor", db.BigInteger)
+    temperament = db.Column("temp", db.BigInteger)
+    versatility = db.Column("vers", db.BigInteger)
 
     def calculate_averages(self):
         """Calcule les moyennes d'attributs par catégorie"""
+        def get_val(val):
+            # Sécurité pour convertir BigInteger/Text en int
+            try:
+                return int(val) if val is not None else 0
+            except:
+                return 0
+
         technical = [
             self.corners, self.crossing, self.dribbling, self.finishing,
             self.first_touch, self.free_kicks, self.heading, self.long_shots,
@@ -162,7 +161,7 @@ class Player(db.Model):
         ]
         
         def avg(attrs):
-            valid = [a for a in attrs if a is not None]
+            valid = [get_val(a) for a in attrs if a is not None]
             return round(sum(valid) / len(valid), 1) if valid else 0
         
         return {
@@ -176,7 +175,7 @@ class Player(db.Model):
         """Conversion en dictionnaire pour l'API"""
         basic_data = {
             "id": self.id,
-            "uid": self.uid,
+            "uid": self.id, # On renvoie l'ID comme UID aussi
             "name": self.name,
             "age": self.age,
             "nationality": self.nationality,
@@ -277,4 +276,4 @@ class Player(db.Model):
         return basic_data
 
     def __repr__(self):
-        return f"<Player {self.name} ({self.position}) - {self.club}>"
+        return f"<Player {self.name} ({self.position})>"
