@@ -1,3 +1,4 @@
+// Player.jsx - Page Détails Joueur FM2023
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -27,7 +28,6 @@ export default function Player() {
     try {
       setLoading(true);
       const data = await getPlayer(id);
-      // L'API renvoie directement l'objet joueur
       setPlayer(data);
     } catch (err) {
       console.error(err);
@@ -37,11 +37,17 @@ export default function Player() {
     }
   };
 
-  // --- FONCTION D'EXPORT CSV ---
-  const handleExport = () => {
+  // --- FONCTION D'EXPORT POLYVALENTE ---
+  const handleExport = (format) => {
     if (!player) return;
 
-    // 1. Aplatir les données pour le CSV
+    // 1. Export PDF : On utilise l'impression native du navigateur
+    if (format === 'pdf') {
+      window.print();
+      return;
+    }
+
+    // 2. Préparation des données pour CSV/Excel
     const flatData = {
       ID: player.id,
       Nom: player.name,
@@ -55,28 +61,37 @@ export default function Player() {
       Pied_Prefere: player.preferred_foot,
       Matchs_Carriere: player.career_apps,
       Buts_Carriere: player.career_goals,
-      // Moyennes
       Moy_Technique: player.avg_technical,
       Moy_Mental: player.avg_mental,
       Moy_Physique: player.avg_physical,
     };
 
-    // Ajouter les attributs détaillés s'ils existent
+    // Ajout des attributs détaillés
     if (player.technical) Object.entries(player.technical).forEach(([k, v]) => flatData[`Tech_${k}`] = v);
     if (player.mental) Object.entries(player.mental).forEach(([k, v]) => flatData[`Mental_${k}`] = v);
     if (player.physical) Object.entries(player.physical).forEach(([k, v]) => flatData[`Phys_${k}`] = v);
     if (player.goalkeeper) Object.entries(player.goalkeeper).forEach(([k, v]) => flatData[`GK_${k}`] = v);
 
-    // 2. Créer le contenu CSV
-    const headers = Object.keys(flatData).join(",");
-    const values = Object.values(flatData).map(v => `"${v !== undefined && v !== null ? v : ''}"`).join(",");
-    const csvContent = "data:text/csv;charset=utf-8," + headers + "\n" + values;
+    // 3. Configuration selon le format
+    // Pour Excel, on ajoute le BOM (\uFEFF) pour forcer l'UTF-8 et on utilise le point-virgule si besoin
+    const separator = format === 'excel' ? ';' : ','; 
+    const bom = format === 'excel' ? '\uFEFF' : '';
+    // On utilise .csv pour Excel aussi car c'est le format texte le plus compatible sans librairie lourde
+    const extension = 'csv'; 
 
-    // 3. Déclencher le téléchargement
-    const encodedUri = encodeURI(csvContent);
+    const headers = Object.keys(flatData).join(separator);
+    const values = Object.values(flatData).map(v => {
+        // Échapper les valeurs pour le CSV
+        const stringVal = String(v !== undefined && v !== null ? v : '');
+        return `"${stringVal.replace(/"/g, '""')}"`;
+    }).join(separator);
+
+    const csvContent = "data:text/csv;charset=utf-8," + encodeURIComponent(bom + headers + "\n" + values);
+
+    // 4. Téléchargement
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `SokrStat_${player.name.replace(/ /g, "_")}.csv`);
+    link.setAttribute("href", csvContent);
+    link.setAttribute("download", `SokrStat_${player.name.replace(/ /g, "_")}_${format}.${extension}`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -107,7 +122,6 @@ export default function Player() {
     );
   }
 
-  // Données pour le graphique radar
   const radarData = [
     { attribute: "Technique", value: player.avg_technical || 0 },
     { attribute: "Mental", value: player.avg_mental || 0 },
@@ -122,23 +136,22 @@ export default function Player() {
 
   return (
     <motion.div
-      className="min-h-screen bg-gray-50 p-4 md:p-6"
+      className="min-h-screen bg-gray-50 p-4 md:p-6 print:bg-white print:p-0"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
       <div className="max-w-7xl mx-auto">
-        {/* Header de navigation */}
-        <div className="flex justify-between items-center mb-6">
+        {/* Header de navigation (Masqué à l'impression) */}
+        <div className="flex justify-between items-center mb-6 print:hidden">
           <Link to="/players" className="text-blue-600 hover:underline inline-flex items-center gap-2">
             ← Retour à la liste
           </Link>
         </div>
 
         {/* Carte principale */}
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-6 relative overflow-hidden">
-          {/* Bandeau décoratif */}
-          <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 to-purple-600"></div>
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-6 relative overflow-hidden print:shadow-none print:border print:border-gray-300">
+          <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 to-purple-600 print:hidden"></div>
 
           <div className="flex flex-col md:flex-row justify-between items-start gap-6 pt-4">
             
@@ -147,56 +160,68 @@ export default function Player() {
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
                 <h1 className="text-4xl font-bold text-gray-800">{player.name}</h1>
                 
-                {/* Bouton d'Export */}
-                <button
-                  onClick={handleExport}
-                  className="px-4 py-2 bg-green-600 text-white text-sm font-bold rounded-lg shadow hover:bg-green-700 transition flex items-center gap-2"
-                  title="Télécharger les données en CSV"
-                >
-                  📥 Exporter les données
-                </button>
+                {/* Menu d'Export (Masqué à l'impression) */}
+                <div className="flex gap-2 print:hidden">
+                    <button
+                      onClick={() => handleExport('csv')}
+                      className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-bold rounded-lg transition flex items-center gap-1"
+                      title="Format universel"
+                    >
+                      📄 CSV
+                    </button>
+                    <button
+                      onClick={() => handleExport('excel')}
+                      className="px-3 py-2 bg-green-100 hover:bg-green-200 text-green-800 text-sm font-bold rounded-lg transition flex items-center gap-1"
+                      title="Format optimisé pour Excel"
+                    >
+                      📊 Excel
+                    </button>
+                    <button
+                      onClick={() => handleExport('pdf')}
+                      className="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-800 text-sm font-bold rounded-lg transition flex items-center gap-1"
+                      title="Imprimer en PDF"
+                    >
+                      🖨️ PDF
+                    </button>
+                </div>
               </div>
               
               <div className="flex flex-wrap gap-2 mb-6">
                 {player.position && (
-                  <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-bold border border-blue-200">
+                  <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-bold border border-blue-200 print:border-gray-300">
                     {player.position}
                   </span>
                 )}
                 {player.age && (
-                  <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm border border-gray-200">
+                  <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm border border-gray-200 print:border-gray-300">
                     {player.age} ans
                   </span>
                 )}
                 {player.preferred_foot && (
-                  <span className="bg-green-50 text-green-700 px-3 py-1 rounded-full text-sm border border-green-200">
+                  <span className="bg-green-50 text-green-700 px-3 py-1 rounded-full text-sm border border-green-200 print:border-gray-300">
                     {player.preferred_foot === "Left" ? "🦶 Gaucher" : player.preferred_foot === "Right" ? "🦶 Droitier" : "🦶 Ambidextre"}
                   </span>
                 )}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-gray-700 bg-gray-50 p-4 rounded-xl border border-gray-100">
-                {player.club && (
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">🏟️</span>
-                    <div>
-                      <p className="text-xs text-gray-500 uppercase font-semibold">Club</p>
-                      <p className="font-medium">{player.club}</p>
-                    </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-gray-700 bg-gray-50 p-4 rounded-xl border border-gray-100 print:bg-white print:border-gray-300">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">🏟️</span>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase font-semibold">Club</p>
+                    <p className="font-medium">{player.club || "Sans club"}</p>
                   </div>
-                )}
+                </div>
                 
-                {player.nationality && (
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 flex justify-center">
-                        <FlagIcon countryCode={player.nationality} />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500 uppercase font-semibold">Nationalité</p>
-                      <p className="font-medium">{player.nationality}</p>
-                    </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 flex justify-center">
+                      <FlagIcon countryCode={player.nationality} />
                   </div>
-                )}
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase font-semibold">Nationalité</p>
+                    <p className="font-medium">{player.nationality}</p>
+                  </div>
+                </div>
 
                 <div className="flex items-center gap-3">
                     <span className="text-2xl">📏</span>
@@ -208,20 +233,18 @@ export default function Player() {
                     </div>
                 </div>
 
-                {player.transfer_value && (
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">💰</span>
-                    <div>
-                      <p className="text-xs text-gray-500 uppercase font-semibold">Valeur estimée</p>
-                      <p className="font-medium text-green-600">{player.transfer_value}</p>
-                    </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">💰</span>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase font-semibold">Valeur estimée</p>
+                    <p className="font-medium text-green-600">{player.transfer_value || "Non définie"}</p>
                   </div>
-                )}
+                </div>
               </div>
             </div>
 
             {/* Graphique Radar */}
-            <div className="w-full md:w-1/3 flex flex-col items-center">
+            <div className="w-full md:w-1/3 flex flex-col items-center print:hidden">
                 <h3 className="text-lg font-semibold text-gray-700 mb-2">Profil du Joueur</h3>
                 <div className="w-full h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
@@ -284,20 +307,20 @@ export default function Player() {
 
         {/* Pieds */}
         {player.feet && (
-          <div className="bg-white rounded-xl shadow-lg p-6 mb-8 border border-gray-100">
+          <div className="bg-white rounded-xl shadow-lg p-6 mb-8 border border-gray-100 print:shadow-none print:border-gray-300">
             <h2 className="text-2xl font-bold mb-6 flex items-center gap-2 text-gray-800">
               👟 Maîtrise des pieds
             </h2>
             <div className="grid grid-cols-3 gap-8">
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
+              <div className="text-center p-4 bg-gray-50 rounded-lg print:bg-white print:border print:border-gray-200">
                 <div className="text-sm font-semibold text-gray-500 uppercase mb-1">Pied préféré</div>
                 <div className="text-2xl font-bold text-blue-600">{player.feet.preferred || "—"}</div>
               </div>
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
+              <div className="text-center p-4 bg-gray-50 rounded-lg print:bg-white print:border print:border-gray-200">
                 <div className="text-sm font-semibold text-gray-500 uppercase mb-1">Pied gauche</div>
                 <div className="text-2xl font-bold text-blue-600">{player.feet.left || "—"}<span className="text-sm text-gray-400 font-normal">/20</span></div>
               </div>
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
+              <div className="text-center p-4 bg-gray-50 rounded-lg print:bg-white print:border print:border-gray-200">
                 <div className="text-sm font-semibold text-gray-500 uppercase mb-1">Pied droit</div>
                 <div className="text-2xl font-bold text-blue-600">{player.feet.right || "—"}<span className="text-sm text-gray-400 font-normal">/20</span></div>
               </div>
@@ -305,8 +328,8 @@ export default function Player() {
           </div>
         )}
 
-        {/* Bouton comparaison */}
-        <div className="text-center mb-12">
+        {/* Bouton comparaison (Masqué à l'impression) */}
+        <div className="text-center mb-12 print:hidden">
           <Link
             to={`/compare?players=${player.id}`}
             className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition font-bold shadow-lg transform hover:-translate-y-1"
@@ -331,7 +354,7 @@ function StatCard({ label, value, icon, color = "blue" }) {
   return (
     <motion.div
       whileHover={{ scale: 1.02 }}
-      className={`rounded-xl shadow-sm p-4 text-center border ${colors[color]} transition`}
+      className={`rounded-xl shadow-sm p-4 text-center border ${colors[color]} transition print:shadow-none print:border-gray-300`}
     >
       <div className="text-3xl mb-2">{icon}</div>
       <div className="text-2xl font-bold mb-1">
@@ -359,7 +382,7 @@ function AttributeSection({ title, attributes, color }) {
   };
 
   return (
-    <div className={`bg-white rounded-xl shadow-lg p-6 mb-6 border-l-4 ${colorClasses[color]}`}>
+    <div className={`bg-white rounded-xl shadow-lg p-6 mb-6 border-l-4 ${colorClasses[color]} print:shadow-none print:border print:border-gray-300`}>
       <h2 className="text-2xl font-bold mb-6 text-gray-800">{title}</h2>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-8 gap-y-4">
         {Object.entries(attributes).map(([key, value]) => {
@@ -375,13 +398,13 @@ function AttributeSection({ title, attributes, color }) {
                     {value}
                 </span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2.5">
+              <div className="w-full bg-gray-200 rounded-full h-2.5 print:bg-gray-100">
                 <div
                   className={`h-2.5 rounded-full ${
                     value >= 15 ? "bg-green-500" :
                     value >= 10 ? barColors[color] :
                     "bg-gray-400"
-                  }`}
+                  } print:bg-black`} // En impression noir et blanc, on force une couleur sombre
                   style={{ width: `${(value / 20) * 100}%` }}
                 ></div>
               </div>
