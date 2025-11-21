@@ -103,7 +103,7 @@ export default function ComparePage() {
     const activeQueries = queries.filter(q => q && q.trim() !== "");
     
     if (activeQueries.length < 2) {
-      setError("⚠️ Veuillez entrer au moins 2 joueurs à comparer.");
+      setError("Veuillez entrer au moins 2 joueurs à comparer.");
       return;
     }
 
@@ -158,7 +158,7 @@ export default function ComparePage() {
     }
   };
 
-  // --- NOUVELLE FONCTION D'EXPORT COMPARATIF ---
+  // FONCTION D'EXPORT COMPARATIF 
   const handleExport = (format) => {
     const activePlayers = players.filter(p => p !== null);
     if (activePlayers.length === 0) return;
@@ -305,7 +305,7 @@ export default function ComparePage() {
     >
       <div className="max-w-7xl mx-auto">
         <h1 className="text-3xl font-bold text-gray-800 mb-8 text-center print:hidden">
-          ⚔️ Comparateur de Joueurs
+            Comparateur de Joueurs
         </h1>
 
         {/* Contrôles (Masqués à l'impression) */}
@@ -356,13 +356,13 @@ export default function ComparePage() {
               disabled={loading}
               className="bg-blue-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-blue-700 transition disabled:opacity-50 shadow-lg flex items-center gap-2"
             >
-              {loading ? "⏳ Recherche..." : "🔍 Comparer"}
+              {loading ? "⏳ Recherche..." : " Comparer"}
             </button>
             <button
               onClick={handleReset}
               className="bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-bold hover:bg-gray-300 transition"
             >
-              🗑️ Effacer
+              Effacer
             </button>
           </div>
 

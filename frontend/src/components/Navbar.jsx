@@ -54,13 +54,13 @@ export default function Navbar() {
 
           {/* Navigation principale */}
           <nav className="flex items-center gap-4 text-sm font-medium">
-            <NavItem to="/" label="🏠 Accueil" />
+            <NavItem to="/" label="Accueil" />
             
             {/* ❌ SUPPRIMÉ : Lien Équipes */}
-            {/* <NavItem to="/teams" label="🏆 Équipes" /> */}
+            {/* <NavItem to="/teams" label="Équipes" /> */}
             
-            <NavItem to="/players" label="👤 Joueurs" />
-            <NavItem to="/compare" label="🔄 Comparateur" />
+            <NavItem to="/players" label="Joueurs" />
+            <NavItem to="/compare" label="Comparateur" />
 
             {/* Bouton thème sombre */}
             <motion.button

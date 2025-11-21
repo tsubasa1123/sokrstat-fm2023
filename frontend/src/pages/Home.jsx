@@ -54,7 +54,8 @@ export default function Home() {
       const [overview, players, nats, poss] = await Promise.all([
         getStatsOverview(),
         getTopPlayers("finishing", null, 6),
-        // CORRECTION : On demande seulement 5 nationalités
+
+        //  5 nationalités
         getNationalities(5),
         getPositions(),
       ]);
@@ -95,7 +96,7 @@ export default function Home() {
         </motion.h1>
 
         <p className="text-gray-600 text-lg max-w-2xl mx-auto leading-relaxed mb-2">
-          Explorez les données de <strong>Football Manager 2023</strong> avec près de <strong>90 000 joueurs</strong> du monde entier.
+          Explorez les données de <strong>Football Manager 2023</strong> avec plus de <strong>90 000 joueurs</strong> du monde entier.
         </p>
         <p className="text-gray-500 text-sm max-w-2xl mx-auto">
           Statistiques détaillées • Comparaisons • Visualisations interactives
@@ -106,13 +107,13 @@ export default function Home() {
             to="/players"
             className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition font-semibold shadow-lg"
           >
-            👤 Explorer les joueurs
+            Explorer les joueurs
           </Link>
           <Link
             to="/compare"
             className="px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition font-semibold shadow-lg"
           >
-            🔄 Comparer des joueurs
+            Comparer des joueurs
           </Link>
         </div>
       </motion.section>
@@ -152,7 +153,7 @@ export default function Home() {
       {/* Top joueurs */}
       <Section>
         <h2 className="text-3xl font-bold mb-6 text-gray-800 flex items-center gap-2">
-          ⭐ Top Finisseurs
+           Top Finisseurs
         </h2>
 
         {loading ? (
@@ -207,7 +208,7 @@ export default function Home() {
           {/* Top nationalités */}
           <div className="bg-white rounded-xl shadow-lg p-6">
             <h3 className="text-2xl font-bold mb-4 text-gray-800">
-              🌍 Top 5 Nationalités
+              Top 5 Nationalités
             </h3>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={nationalities}>
@@ -223,7 +224,7 @@ export default function Home() {
           {/* Top positions */}
           <div className="bg-white rounded-xl shadow-lg p-6">
             <h3 className="text-2xl font-bold mb-4 text-gray-800">
-              📍 Répartition par Position
+              Répartition par Position
             </h3>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart
@@ -235,7 +236,6 @@ export default function Home() {
                 
                 <XAxis type="number" />
                 
-                {/* CORRECTION : Largeur augmentée à 150 pour aligner les textes */}
                 <YAxis 
                   dataKey="position" 
                   type="category" 
@@ -261,17 +261,15 @@ export default function Home() {
       {/* Fonctionnalités */}
       <Section>
         <h2 className="text-3xl font-bold mb-8 text-gray-800 text-center">
-          🎯 Fonctionnalités
+           Fonctionnalités
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <FeatureCard
-            icon="🔍"
             title="Recherche Avancée"
             description="Filtrez par position, nationalité, club, âge et plus encore."
             link="/players"
            />
           <FeatureCard
-            icon="🔄"
             title="Comparateur"
             description="Comparez jusqu'à 4 joueurs côte à côte avec graphiques radar."
             link="/compare"
@@ -289,7 +287,7 @@ export default function Home() {
       <Section>
         <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-8 rounded-2xl shadow-lg text-white text-center">
           <h2 className="text-3xl font-bold mb-4">
-            💡 À propos du projet
+             À propos du projet
           </h2>
           <p className="max-w-3xl mx-auto mb-4 leading-relaxed text-white/90">
             <strong>SokrStat</strong> est un projet académique réalisé dans le cadre du parcours

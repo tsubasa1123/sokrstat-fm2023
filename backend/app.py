@@ -100,7 +100,7 @@ def get_players():
         return jsonify({"error": str(e)}), 500
 
 # ====================
-# 📥 EXPORT JOUEUR (VOTRE CODE RESTAURÉ)
+#  EXPORT JOUEUR 
 # ====================
 @app.route("/api/players/<int:player_id>/export/<format>")
 def export_player(player_id, format):
@@ -243,7 +243,7 @@ def search_players():
     return jsonify([p.to_dict() for p in players])
 
 # ====================
-# 🔄 COMPARATEUR (AJOUTÉ POUR CORRIGER L'ERREUR 404)
+#  COMPARATEUR 
 # ====================
 @app.route("/api/compare", methods=["POST"])
 def compare_players():
@@ -327,7 +327,7 @@ def list_positions():
     return jsonify([p[0] for p in pos if p[0]])
 
 # ====================
-# 🚀 DÉMARRAGE SERVEUR
+#  DÉMARRAGE SERVEUR
 # ====================
 if __name__ == "__main__":
     with app.app_context():
