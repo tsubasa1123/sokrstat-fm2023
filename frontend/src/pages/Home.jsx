@@ -123,25 +123,21 @@ export default function Home() {
         <Section>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
             <StatCard
-              icon="👥"
               value={stats.total_players?.toLocaleString()}
               label="Joueurs"
               color="blue"
             />
             <StatCard
-              icon="🌍"
               value={stats.nationalities}
               label="Nationalités"
               color="green"
             />
             <StatCard
-              icon="⚽"
               value={stats.clubs}
               label="Clubs"
               color="purple"
             />
             <StatCard
-              icon="📅"
               value={stats.average_age?.toFixed(1)}
               label="Âge moyen"
               color="yellow"
@@ -275,7 +271,6 @@ export default function Home() {
             link="/compare"
           />
           <FeatureCard
-            icon="📊"
             title="Statistiques Détaillées"
             description="Consultez les attributs techniques, mentaux et physiques de chaque joueur."
             link="/players"
@@ -298,24 +293,24 @@ export default function Home() {
 
           <div className="flex justify-center gap-3 flex-wrap mt-6">
             <span className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-semibold">
-              ⚙️ Flask (API REST)
+               Flask (API REST)
             </span>
             <span className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-semibold">
-              💻 React + Vite
+               React + Vite
             </span>
             <span className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-semibold">
-              🎨 TailwindCSS
+               TailwindCSS
             </span>
             <span className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-semibold">
-              🗄️ SQLite + SQLAlchemy
+               SQLite + SQLAlchemy
             </span>
             <span className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-semibold">
-              📊 Recharts
+               Recharts
             </span>
         </div>
 
           <p className="mt-6 text-sm text-white/80">
-            📂 Dataset : Football Manager 2023 (90k+ joueurs) de Kaggle
+             Dataset : Football Manager 2023 (90k+ joueurs) de Kaggle
           </p>
         </div>
       </Section>
