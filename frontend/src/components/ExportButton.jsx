@@ -1,6 +1,7 @@
 // frontend/src/components/ExportButton.jsx
+// frontend/src/components/ExportButton.jsx
 import React, { useState } from 'react';
-import { exportPlayers } from '../services/api';
+import { getPlayers } from '../services/api';
 
 export default function ExportButton({ 
   filters = {}, 
@@ -29,14 +30,6 @@ export default function ExportButton({
       { key: 'height', label: 'Taille' },
       { key: 'weight', label: 'Poids' },
       { key: 'preferred_foot', label: 'Pied préféré' },
-      { key: 'transfer_value', label: 'Valeur' },
-    ],
-    carriere: [
-      { key: 'career_apps', label: 'Matchs carrière' },
-      { key: 'career_goals', label: 'Buts carrière' },
-      { key: 'league_apps', label: 'Matchs championnat' },
-      { key: 'league_goals', label: 'Buts championnat' },
-      { key: 'caps', label: 'Sélections' },
     ],
     technique: [
       { key: 'corners', label: 'Corners' },
@@ -44,28 +37,19 @@ export default function ExportButton({
       { key: 'dribbling', label: 'Dribbling' },
       { key: 'finishing', label: 'Finishing' },
       { key: 'first_touch', label: 'First Touch' },
-      { key: 'free_kicks', label: 'Free Kicks' },
       { key: 'heading', label: 'Heading' },
-      { key: 'long_shots', label: 'Long Shots' },
-      { key: 'marking', label: 'Marking' },
       { key: 'passing', label: 'Passing' },
-      { key: 'penalty_taking', label: 'Penalties' },
       { key: 'tackling', label: 'Tackling' },
       { key: 'technique', label: 'Technique' },
     ],
     mental: [
       { key: 'aggression', label: 'Aggression' },
       { key: 'anticipation', label: 'Anticipation' },
-      { key: 'bravery', label: 'Bravery' },
       { key: 'composure', label: 'Composure' },
       { key: 'concentration', label: 'Concentration' },
       { key: 'decisions', label: 'Decisions' },
       { key: 'determination', label: 'Determination' },
-      { key: 'flair', label: 'Flair' },
       { key: 'leadership', label: 'Leadership' },
-      { key: 'off_the_ball', label: 'Off The Ball' },
-      { key: 'positioning', label: 'Positioning' },
-      { key: 'teamwork', label: 'Teamwork' },
       { key: 'vision', label: 'Vision' },
       { key: 'work_rate', label: 'Work Rate' },
     ],
@@ -78,36 +62,90 @@ export default function ExportButton({
       { key: 'stamina', label: 'Stamina' },
       { key: 'strength', label: 'Strength' },
     ],
-    gardien: [
-      { key: 'aerial_reach', label: 'Aerial Reach' },
-      { key: 'command_of_area', label: 'Command of Area' },
-      { key: 'communication', label: 'Communication' },
-      { key: 'eccentricity', label: 'Eccentricity' },
-      { key: 'handling', label: 'Handling' },
-      { key: 'kicking', label: 'Kicking' },
-      { key: 'one_on_ones', label: 'One on Ones' },
-      { key: 'reflexes', label: 'Reflexes' },
-      { key: 'rushing_out', label: 'Rushing Out' },
-      { key: 'throwing', label: 'Throwing' },
-    ],
+  };
+
+  const downloadFile = (blob, filename) => {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handleExport = async (format) => {
     setLoading(true);
     try {
-      await exportPlayers({
-        filters: filters,
-        columns: selectedColumns,
-        format: format
+      // Récupérer les données filtrées
+      const params = { ...filters, per_page: 1000, page: 1 };
+      Object.keys(params).forEach(key => {
+        if (params[key] === "" || params[key] === null) {
+          delete params[key];
+        }
       });
+      
+      const data = await getPlayers(params);
+      const players = data.players || [];
+      
+      if (players.length === 0) {
+        alert('Aucune donnée à exporter');
+        setLoading(false);
+        return;
+      }
+
+      // Préparer les en-têtes
+      const columnLabels = {};
+      Object.values(availableColumns).forEach(category => {
+        category.forEach(col => {
+          columnLabels[col.key] = col.label;
+        });
+      });
+
+      const headers = selectedColumns.map(key => columnLabels[key] || key);
+      
+      // Préparer les données
+      const rows = players.map(player => 
+        selectedColumns.map(col => {
+          const value = player[col];
+          return value !== null && value !== undefined ? String(value) : '';
+        })
+      );
+
+      if (format === 'csv') {
+        // Export CSV
+        const csvContent = [
+          headers.join(','),
+          ...rows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(','))
+        ].join('\n');
+        
+        const blob = new Blob(['\uFEFF' + csvContent], { 
+          type: 'text/csv;charset=utf-8;' 
+        });
+        downloadFile(blob, 'sokrstat_export.csv');
+        
+      } else if (format === 'excel') {
+        // Export Excel (format TSV pour compatibilité)
+        const excelContent = [
+          headers.join('\t'),
+          ...rows.map(row => row.join('\t'))
+        ].join('\n');
+        
+        const blob = new Blob(['\uFEFF' + excelContent], { 
+          type: 'application/vnd.ms-excel;charset=utf-8;' 
+        });
+        downloadFile(blob, 'sokrstat_export.xls');
+      }
       
       // Fermer le menu après succès
       setTimeout(() => {
         setIsOpen(false);
       }, 500);
+      
     } catch (error) {
       console.error('Erreur export:', error);
-      alert('Erreur lors de l\'export. Veuillez réessayer.');
+      alert('Erreur lors de l\'export : ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -133,7 +171,6 @@ export default function ExportButton({
   };
 
   if (!showOptions) {
-    // Mode simple : bouton direct
     return (
       <button
         onClick={() => handleExport(selectedFormat)}
@@ -159,20 +196,17 @@ export default function ExportButton({
 
       {isOpen && (
         <>
-          {/* Overlay pour fermer */}
           <div 
             className="fixed inset-0 z-40" 
             onClick={() => setIsOpen(false)}
           />
 
-          {/* Menu d'export */}
           <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-2xl z-50 border border-gray-200 max-h-96 overflow-y-auto">
             <div className="p-4">
               <h3 className="text-lg font-bold text-gray-800 mb-4">
                 📥 Options d'export
               </h3>
 
-              {/* Sélection du format */}
               <div className="mb-4">
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Format de fichier
@@ -201,7 +235,6 @@ export default function ExportButton({
                 </div>
               </div>
 
-              {/* Sélection des colonnes */}
               <div className="mb-4">
                 <div className="flex items-center justify-between mb-2">
                   <label className="block text-sm font-semibold text-gray-700">
@@ -261,7 +294,6 @@ export default function ExportButton({
                 )}
               </div>
 
-              {/* Infos sur les filtres */}
               {Object.keys(filters).length > 0 && (
                 <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
                   <p className="text-sm text-blue-800">
@@ -277,7 +309,6 @@ export default function ExportButton({
                 </div>
               )}
 
-              {/* Boutons d'action */}
               <div className="flex gap-2">
                 <button
                   onClick={() => handleExport(selectedFormat)}
