@@ -1,0 +1,96 @@
+
+/* 🌐 Animation sur les liens NavLink */
+.navlink {
+  position: relative;
+  display: inline-block;
+  padding-bottom: 2px;
+}
+
+.navlink::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: 0%;
+  background-color: currentColor;
+  transition: width 0.3s ease;
+}
+
+.navlink:hover::after,
+.navlink-active::after {
+  width: 100%;
+}
+
+/* 🌐 Animation fluide sous les liens NavLink */
+.navlink {
+  position: relative;
+  display: inline-block;
+  padding-bottom: 2px;
+}
+
+.navlink::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: 0%;
+  background-color: currentColor;
+  transition: width 0.3s ease;
+}
+
+.navlink:hover::after,
+.navlink-active::after {
+  width: 100%;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ✨ Transition douce entre thèmes */
+html {
+  transition: background-color 0.5s ease, color 0.5s ease;
+}
+
+/* 🌗 Thème sombre global */
+.dark {
+  background-color: #0f172a;
+  color: #f1f5f9;
+}
+
+/* 🌐 Animation fluide des liens NavLink */
+.navlink {
+  position: relative;
+  display: inline-block;
+  padding-bottom: 2px;
+}
+
+.navlink::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: 0%;
+  background-color: currentColor;
+  transition: width 0.3s ease;
+}
+
+.navlink:hover::after,
+.navlink-active::after {
+  width: 100%;
+}
+
+/* 🪄 Animation d'apparition */
+@keyframes fadeInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
