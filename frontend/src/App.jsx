@@ -8,8 +8,6 @@ import ScrollToTop from "./components/ScrollToTop";
 import SplashScreen from "./components/SplashScreen";
 
 import Home from "./pages/Home"; 
-// ❌ SUPPRIMÉ : import Teams from "./pages/Teams";
-// ❌ SUPPRIMÉ : import TeamPage from "./pages/Team";
 import Players from "./pages/Players";
 import Player from "./pages/Player";
 import Compare from "./pages/Compare";
@@ -61,7 +59,7 @@ export default function App() {
             {/* Accueil */}
             <Route path="/" element={<PageTransition><Home /></PageTransition>} />
 
-            {/* ❌ SUPPRIMÉ : Routes Teams */}
+            {/*  SUPPRIMÉ : Routes Teams */}
             {/* <Route path="/teams" element={<PageTransition><Teams /></PageTransition>} /> */}
             {/* <Route path="/team/:id" element={<PageTransition><TeamPage /></PageTransition>} /> */}
 

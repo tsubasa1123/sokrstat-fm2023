@@ -1,5 +1,5 @@
 
-/* 🌐 Animation sur les liens NavLink */
+/* Animation sur les liens NavLink */
 .navlink {
   position: relative;
   display: inline-block;
@@ -22,7 +22,7 @@
   width: 100%;
 }
 
-/* 🌐 Animation fluide sous les liens NavLink */
+/* Animation fluide sous les liens NavLink */
 .navlink {
   position: relative;
   display: inline-block;
@@ -49,18 +49,18 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ✨ Transition douce entre thèmes */
+/* Transition douce entre thèmes */
 html {
   transition: background-color 0.5s ease, color 0.5s ease;
 }
 
-/* 🌗 Thème sombre global */
+/*Thème sombre global */
 .dark {
   background-color: #0f172a;
   color: #f1f5f9;
 }
 
-/* 🌐 Animation fluide des liens NavLink */
+/* Animation fluide des liens NavLink */
 .navlink {
   position: relative;
   display: inline-block;
@@ -83,7 +83,7 @@ html {
   width: 100%;
 }
 
-/* 🪄 Animation d'apparition */
+/* Animation d'apparition */
 @keyframes fadeInUp {
   0% {
     opacity: 0;

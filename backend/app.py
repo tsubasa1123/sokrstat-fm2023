@@ -34,10 +34,10 @@ def home():
         total_players = Player.query.count()
     except Exception as e:
         total_players = 0
-        print(f"⚠️ Erreur DB: {e}")
+        print(f"Erreur DB: {e}")
     
     return jsonify({
-        "message": "✅ API SokrStat Football Manager 2023",
+        "message": "API SokrStat Football Manager 2023",
         "version": "2.5 (Full Features)",
         "environment": env,
         "total_players": total_players,
@@ -116,7 +116,7 @@ def export_player(player_id, format):
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
         from reportlab.lib.units import inch
     except ImportError:
-        print("⚠️ ReportLab non installé")
+        print("ReportLab non installé")
 
     # Récupérer le joueur
     player = Player.query.get_or_404(player_id)
@@ -242,6 +242,43 @@ def search_players():
     
     return jsonify([p.to_dict() for p in players])
 
+
+# Ajouter un joueur
+@app.route("/api/players", methods=["POST"])
+def add_player():
+    data = request.get_json()
+    new_player = Player(
+        name=data['name'],
+        age=data['age'],
+        nationality=data['nationality'],
+        club=data['club'],
+        position=data['position']
+    )
+    db.session.add(new_player)
+    db.session.commit()
+    return jsonify({"message": "Joueur ajouté", "id": new_player.id}), 201
+
+# Modifier un joueur
+@app.route("/api/players/<int:player_id>", methods=["PUT"])
+def update_player(player_id):
+    player = Player.query.get_or_404(player_id)
+    data = request.get_json()
+    
+    player.name = data.get('name', player.name)
+    player.age = data.get('age', player.age)
+    player.club = data.get('club', player.club)
+    
+    db.session.commit()
+    return jsonify({"message": "Joueur mis à jour"})
+
+# Supprimer un joueur
+@app.route("/api/players/<int:player_id>", methods=["DELETE"])
+def delete_player(player_id):
+    player = Player.query.get_or_404(player_id)
+    db.session.delete(player)
+    db.session.commit()
+    return jsonify({"message": "Joueur supprimé"})
+
 # ====================
 #  COMPARATEUR 
 # ====================
@@ -263,7 +300,7 @@ def compare_players():
         return jsonify({"error": str(e)}), 500
 
 # ====================
-# STATISTIQUES (AJOUTÉ POUR LE DASHBOARD)
+# STATISTIQUES 
 # ====================
 @app.route("/api/stats/overview")
 def stats_overview():

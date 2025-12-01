@@ -377,7 +377,7 @@ export default function ComparePage() {
         {history.length > 0 && !comparing && !players.some(p => p !== null) && (
           <div className="bg-white rounded-xl shadow-lg p-4 mb-6 print:hidden">
             <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center justify-between">
-              <span>📜 Comparaisons récentes</span>
+              <span>Comparaisons récentes</span>
               <button onClick={clearHistory} className="text-xs text-red-600 hover:text-red-800">Effacer</button>
             </h3>
             <div className="flex flex-wrap gap-3">
@@ -409,13 +409,13 @@ export default function ComparePage() {
             {/* BARRE D'EXPORTATION */}
             <div className="flex justify-end gap-2 print:hidden">
                 <button onClick={() => handleExport('csv')} className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-bold rounded-lg transition flex items-center gap-2">
-                  📄 CSV
+                  CSV
                 </button>
                 <button onClick={() => handleExport('excel')} className="px-3 py-2 bg-green-100 hover:bg-green-200 text-green-800 text-sm font-bold rounded-lg transition flex items-center gap-2">
-                  📊 Excel
+                  Excel
                 </button>
                 <button onClick={() => handleExport('pdf')} className="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-800 text-sm font-bold rounded-lg transition flex items-center gap-2">
-                  🖨️ PDF
+                  PDF
                 </button>
             </div>
 
@@ -433,11 +433,11 @@ export default function ComparePage() {
                       </div>
                       
                       <div className="text-sm text-gray-600 space-y-1 mb-4">
-                        <p>⚽ {p.club || "Sans club"}</p>
+                        <p>{p.club || "Sans club"}</p>
                         <p className="flex items-center gap-2">
                             <FlagIcon countryCode={p.nationality} /> {p.nationality}
                         </p>
-                        <p>📍 {p.position}</p>
+                        <p>{p.position}</p>
                         <div className="flex gap-2 mt-2">
                             <span className="bg-gray-100 px-2 py-1 rounded text-xs font-semibold">{p.age} ans</span>
                             <span className="bg-gray-100 px-2 py-1 rounded text-xs font-semibold">{p.height} cm</span>
@@ -474,25 +474,25 @@ export default function ComparePage() {
             {/* 2. Graphiques Radar */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <RadarCard 
-                title="📊 Vue d'ensemble" 
+                title="Vue d'ensemble" 
                 data={buildRadarData("overview")} 
                 players={players} 
                 colors={colors} 
               />
               <RadarCard 
-                title="⚙️ Technique" 
+                title="Technique" 
                 data={buildRadarData("technical")} 
                 players={players} 
                 colors={colors} 
               />
               <RadarCard 
-                title="🧠 Mental" 
+                title="Mental" 
                 data={buildRadarData("mental")} 
                 players={players} 
                 colors={colors} 
               />
               <RadarCard 
-                title="💪 Physique" 
+                title="Physique" 
                 data={buildRadarData("physical")} 
                 players={players} 
                 colors={colors} 
@@ -505,7 +505,7 @@ export default function ComparePage() {
   );
 }
 
-// Composant Graphique Reutilisable
+// Composant Graphique 
 function RadarCard({ title, data, players, colors }) {
   return (
     <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100 print:shadow-none print:border-gray-300 print:break-inside-avoid">

@@ -308,7 +308,7 @@ export default function Players() {
               <div className="space-y-1 text-sm text-gray-600">
                 {player.club && (
                   <p className="flex items-center gap-1">
-                    <span>⚽</span>
+                    <span>Club : </span>
                     <span className="truncate">{player.club}</span>
                   </p>
                 )}
@@ -320,7 +320,7 @@ export default function Players() {
                 )}
                 {player.age && (
                   <p className="flex items-center gap-1">
-                    <span>📅</span>
+                    <span>Age : </span>
                     <span>{player.age} ans</span>
                   </p>
                 )}
