@@ -1,4 +1,4 @@
-// Navbar.jsx - Version corrigée pour FM2023
+// Navbar.jsx 
 import { NavLink } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
@@ -61,6 +61,11 @@ export default function Navbar() {
             
             <NavItem to="/players" label="Joueurs" />
             <NavItem to="/compare" label="Comparateur" />
+            <Link 
+              to="/admin" 
+              className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition">
+                   Admin
+            </Link>
 
             {/* Bouton thème sombre */}
             <motion.button

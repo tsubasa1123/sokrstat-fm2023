@@ -1,16 +1,15 @@
-// App.jsx - Version corrigée pour FM2023
+// App.jsx 
 import { Routes, Route, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-
 import Navbar from "./components/Navbar";
 import ScrollToTop from "./components/ScrollToTop";
 import SplashScreen from "./components/SplashScreen";
-
 import Home from "./pages/Home"; 
 import Players from "./pages/Players";
 import Player from "./pages/Player";
 import Compare from "./pages/Compare";
+import Admin from './pages/Admin';
 
 // Animation de transition entre pages
 function PageTransition({ children }) {
@@ -59,16 +58,15 @@ export default function App() {
             {/* Accueil */}
             <Route path="/" element={<PageTransition><Home /></PageTransition>} />
 
-            {/*  SUPPRIMÉ : Routes Teams */}
-            {/* <Route path="/teams" element={<PageTransition><Teams /></PageTransition>} /> */}
-            {/* <Route path="/team/:id" element={<PageTransition><TeamPage /></PageTransition>} /> */}
-
             {/* Joueurs */}
             <Route path="/players" element={<PageTransition><Players /></PageTransition>} />
             <Route path="/player/:id" element={<PageTransition><Player /></PageTransition>} />
 
             {/* Comparateur */}
             <Route path="/compare" element={<PageTransition><Compare /></PageTransition>} />
+
+            {/* Admin - CRUD */}
+            <Route path="/admin" element={<PageTransition><Admin /></PageTransition>} />
           </Routes>
         </AnimatePresence>
       </main>
