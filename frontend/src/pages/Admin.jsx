@@ -1,10 +1,12 @@
 // frontend/src/pages/Admin.jsx
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export default function Admin() {
-  const [activeTab, setActiveTab] = useState('add'); // 'add', 'update', 'delete'
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('add'); // 'add', 'update', 'delete', 'import'
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -32,9 +34,28 @@ export default function Admin() {
   // État pour la suppression
   const [deleteId, setDeleteId] = useState('');
 
+  // État pour l'import
+  const [importFile, setImportFile] = useState(null);
+
   const resetMessages = () => {
     setMessage('');
     setError('');
+  };
+
+  // Récupérer le token
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('admin_token');
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    };
+  };
+
+  // Déconnexion
+  const handleLogout = () => {
+    localStorage.removeItem('admin_token');
+    localStorage.removeItem('admin_username');
+    navigate('/login');
   };
 
   // Ajouter un joueur
@@ -46,7 +67,7 @@ export default function Admin() {
     try {
       const response = await fetch(`${API_URL}/players`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           ...addData,
           age: parseInt(addData.age) || 0
@@ -84,7 +105,7 @@ export default function Admin() {
     try {
       const response = await fetch(`${API_URL}/players/${updateId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           ...updateData,
           age: updateData.age ? parseInt(updateData.age) : undefined
@@ -119,8 +140,12 @@ export default function Admin() {
     setLoading(true);
 
     try {
+      const token = localStorage.getItem('admin_token');
       const response = await fetch(`${API_URL}/players/${deleteId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
 
       const data = await response.json();
@@ -138,17 +163,68 @@ export default function Admin() {
     }
   };
 
+  // Importer CSV/Excel
+  const handleImport = async (e) => {
+    e.preventDefault();
+    
+    if (!importFile) {
+      setError('Veuillez sélectionner un fichier');
+      return;
+    }
+    
+    resetMessages();
+    setLoading(true);
+    
+    const formData = new FormData();
+    formData.append('file', importFile);
+    
+    const token = localStorage.getItem('admin_token');
+    
+    try {
+      const response = await fetch(`${API_URL}/admin/import`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        setMessage(`${data.message}`);
+        setImportFile(null);
+        // Reset input file
+        document.getElementById('file-upload').value = '';
+      } else {
+        setError(`❌ ${data.error}`);
+      }
+    } catch (err) {
+      setError(`❌ Erreur : ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-6">
       <div className="max-w-4xl mx-auto">
-        {/* En-tête */}
-        <div className="mb-6">
-          <h1 className="text-4xl font-bold text-gray-800 mb-2">
-             Administration
-          </h1>
-          <p className="text-gray-600">
-            Gestion des joueurs (CRUD : Create, Read, Update, Delete)
-          </p>
+        {/* En-tête avec déconnexion */}
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold text-gray-800 mb-2">
+              Administration
+            </h1>
+            <p className="text-gray-600">
+              Connecté en tant que : <strong>{localStorage.getItem('admin_username')}</strong>
+            </p>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+          >
+            Déconnexion
+          </button>
         </div>
 
         {/* Messages */}
@@ -175,7 +251,7 @@ export default function Admin() {
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              ➕ Ajouter
+              Ajouter
             </button>
             <button
               onClick={() => setActiveTab('update')}
@@ -185,7 +261,7 @@ export default function Admin() {
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-               Modifier
+              Modifier
             </button>
             <button
               onClick={() => setActiveTab('delete')}
@@ -195,7 +271,17 @@ export default function Admin() {
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-               Supprimer
+              Supprimer
+            </button>
+            <button
+              onClick={() => setActiveTab('import')}
+              className={`flex-1 px-6 py-4 font-semibold transition ${
+                activeTab === 'import'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Import
             </button>
           </div>
 
@@ -207,9 +293,7 @@ export default function Admin() {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nom *
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nom *</label>
                     <input
                       type="text"
                       required
@@ -221,9 +305,7 @@ export default function Admin() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Âge *
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Âge *</label>
                     <input
                       type="number"
                       required
@@ -237,9 +319,7 @@ export default function Admin() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nationalité *
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nationalité *</label>
                     <input
                       type="text"
                       required
@@ -251,9 +331,7 @@ export default function Admin() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Club
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Club</label>
                     <input
                       type="text"
                       value={addData.club}
@@ -264,9 +342,7 @@ export default function Admin() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Position *
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Position *</label>
                     <select
                       required
                       value={addData.position}
@@ -287,9 +363,7 @@ export default function Admin() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Pied préféré
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Pied préféré</label>
                     <select
                       value={addData.preferred_foot}
                       onChange={(e) => setAddData({ ...addData, preferred_foot: e.target.value })}
@@ -307,7 +381,7 @@ export default function Admin() {
                   disabled={loading}
                   className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition font-semibold disabled:opacity-50"
                 >
-                  {loading ? '⏳ Ajout en cours...' : '➕ Ajouter le joueur'}
+                  {loading ? '⏳ Ajout en cours...' : 'Ajouter le joueur'}
                 </button>
               </form>
             )}
@@ -318,9 +392,7 @@ export default function Admin() {
                 <h2 className="text-2xl font-bold mb-4">Modifier un joueur existant</h2>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    ID du joueur à modifier *
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">ID du joueur à modifier *</label>
                   <input
                     type="number"
                     required
@@ -329,16 +401,12 @@ export default function Admin() {
                     className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Ex: 12345"
                   />
-                  <p className="text-sm text-gray-500 mt-1">
-                     Trouvez l'ID dans l'URL de la fiche joueur
-                  </p>
+                  <p className="text-sm text-gray-500 mt-1">Trouvez l'ID dans l'URL de la fiche joueur</p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nouveau nom
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nouveau nom</label>
                     <input
                       type="text"
                       value={updateData.name}
@@ -348,9 +416,7 @@ export default function Admin() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nouvel âge
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nouvel âge</label>
                     <input
                       type="number"
                       value={updateData.age}
@@ -360,9 +426,7 @@ export default function Admin() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nouvelle nationalité
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nouvelle nationalité</label>
                     <input
                       type="text"
                       value={updateData.nationality}
@@ -372,9 +436,7 @@ export default function Admin() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nouveau club
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nouveau club</label>
                     <input
                       type="text"
                       value={updateData.club}
@@ -384,9 +446,7 @@ export default function Admin() {
                   </div>
                 </div>
 
-                <p className="text-sm text-gray-500">
-                  ℹ️ Laissez vide les champs que vous ne souhaitez pas modifier
-                </p>
+                <p className="text-sm text-gray-500">ℹ️ Laissez vide les champs que vous ne souhaitez pas modifier</p>
 
                 <button
                   type="submit"
@@ -411,9 +471,7 @@ export default function Admin() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    ID du joueur à supprimer *
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">ID du joueur à supprimer *</label>
                   <input
                     type="number"
                     required
@@ -422,9 +480,7 @@ export default function Admin() {
                     className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-red-500"
                     placeholder="Ex: 12345"
                   />
-                  <p className="text-sm text-gray-500 mt-1">
-                     Trouvez l'ID dans l'URL de la fiche joueur
-                  </p>
+                  <p className="text-sm text-gray-500 mt-1">Trouvez l'ID dans l'URL de la fiche joueur</p>
                 </div>
 
                 <button
@@ -433,6 +489,48 @@ export default function Admin() {
                   className="w-full bg-red-600 text-white py-3 px-6 rounded-lg hover:bg-red-700 transition font-semibold disabled:opacity-50"
                 >
                   {loading ? '⏳ Suppression en cours...' : 'Supprimer le joueur'}
+                </button>
+              </form>
+            )}
+
+            {/* IMPORT CSV/EXCEL */}
+            {activeTab === 'import' && (
+              <form onSubmit={handleImport} className="space-y-4">
+                <h2 className="text-2xl font-bold mb-4">Importer depuis CSV/Excel</h2>
+                
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                  <input
+                    type="file"
+                    accept=".csv,.xlsx,.xls"
+                    onChange={(e) => setImportFile(e.target.files[0])}
+                    className="hidden"
+                    id="file-upload"
+                  />
+                  
+                  <label htmlFor="file-upload" className="cursor-pointer">
+                    <div className="text-6xl mb-4"></div>
+                    <p className="text-lg font-semibold text-gray-700">
+                      {importFile ? importFile.name : 'Cliquez pour sélectionner un fichier'}
+                    </p>
+                    <p className="text-sm text-gray-500 mt-2">
+                      Formats acceptés : CSV, Excel (.xlsx, .xls)
+                    </p>
+                  </label>
+                </div>
+                
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <p className="text-yellow-800 font-semibold">⚠️ Format du fichier</p>
+                  <p className="text-yellow-700 text-sm mt-1">
+                    Le fichier doit contenir au minimum les colonnes : <strong>name, age, nationality, position</strong>
+                  </p>
+                </div>
+                
+                <button
+                  type="submit"
+                  disabled={loading || !importFile}
+                  className="w-full bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition font-semibold disabled:opacity-50"
+                >
+                  {loading ? '⏳ Import en cours...' : 'Importer les joueurs'}
                 </button>
               </form>
             )}
@@ -446,6 +544,7 @@ export default function Admin() {
             <li>• <strong>Ajouter</strong> : Créez un nouveau joueur en remplissant tous les champs obligatoires</li>
             <li>• <strong>Modifier</strong> : Mettez à jour les informations d'un joueur existant (via son ID)</li>
             <li>• <strong>Supprimer</strong> : Supprimez définitivement un joueur de la base de données</li>
+            <li>• <strong>Import</strong> : Importez plusieurs joueurs depuis un fichier CSV ou Excel</li>
             <li>• Pour trouver l'ID d'un joueur : Allez sur sa fiche, l'ID est dans l'URL (ex: /player/12345)</li>
           </ul>
         </div>

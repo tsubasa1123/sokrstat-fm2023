@@ -10,6 +10,19 @@ import Players from "./pages/Players";
 import Player from "./pages/Player";
 import Compare from "./pages/Compare";
 import Admin from './pages/Admin';
+import { Navigate } from 'react-router-dom';
+import Login from './pages/Login';
+
+// Composant pour protéger les routes admin
+function ProtectedRoute({ children }) {
+  const token = localStorage.getItem('admin_token');
+  
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  return children;
+}
 
 // Animation de transition entre pages
 function PageTransition({ children }) {
@@ -66,7 +79,23 @@ export default function App() {
             <Route path="/compare" element={<PageTransition><Compare /></PageTransition>} />
 
             {/* Admin - CRUD */}
-            <Route path="/admin" element={<PageTransition><Admin /></PageTransition>} />
+            <Route path="/" element={<PageTransition><Home /></PageTransition>} />
+<Route path="/players" element={<PageTransition><Players /></PageTransition>} />
+<Route path="/player/:id" element={<PageTransition><Player /></PageTransition>} />
+<Route path="/compare" element={<PageTransition><Compare /></PageTransition>} />
+
+{/* Login */}
+<Route path="/login" element={<PageTransition><Login /></PageTransition>} />
+
+{/* Admin protégé */}
+<Route 
+  path="/admin" 
+  element={
+    <ProtectedRoute>
+      <PageTransition><Admin /></PageTransition>
+    </ProtectedRoute>
+  } 
+/>
           </Routes>
         </AnimatePresence>
       </main>

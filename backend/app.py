@@ -7,6 +7,10 @@ from models import db, Player
 from sqlalchemy import func, or_
 import pandas as pd
 from io import BytesIO
+from functools import wraps
+from werkzeug.security import check_password_hash, generate_password_hash
+import jwt
+from datetime import datetime, timedelta
 
 # === Déterminer l'environnement ===
 env = os.environ.get('FLASK_ENV', 'development')
@@ -242,9 +246,78 @@ def search_players():
     
     return jsonify([p.to_dict() for p in players])
 
+# ====================
+# 🔐 AUTHENTIFICATION ADMIN
+# ====================
+
+# Credentials admin (en production, utiliser des variables d'environnement)
+ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
+ADMIN_PASSWORD_HASH = os.environ.get('ADMIN_PASSWORD_HASH', 
+    generate_password_hash('admin123'))  # Changez ce mot de passe !
+SECRET_KEY = os.environ.get('SECRET_KEY', 'your-secret-key-change-in-prod')
+
+def token_required(f):
+    """Décorateur pour protéger les routes admin"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = request.headers.get('Authorization')
+        
+        if not token:
+            return jsonify({'error': 'Token manquant'}), 401
+        
+        try:
+            # Supprimer "Bearer " si présent
+            if token.startswith('Bearer '):
+                token = token[7:]
+            
+            data = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+            
+            # Vérifier expiration
+            if datetime.utcnow().timestamp() > data['exp']:
+                return jsonify({'error': 'Token expiré'}), 401
+                
+        except jwt.InvalidTokenError:
+            return jsonify({'error': 'Token invalide'}), 401
+        
+        return f(*args, **kwargs)
+    
+    return decorated
+
+@app.route("/api/auth/login", methods=["POST"])
+def login():
+    """Connexion admin"""
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+    
+    if not username or not password:
+        return jsonify({'error': 'Identifiants manquants'}), 400
+    
+    # Vérifier les credentials
+    if username == ADMIN_USERNAME and check_password_hash(ADMIN_PASSWORD_HASH, password):
+        # Générer token JWT valide 24h
+        token = jwt.encode({
+            'username': username,
+            'exp': datetime.utcnow() + timedelta(hours=24)
+        }, SECRET_KEY, algorithm='HS256')
+        
+        return jsonify({
+            'message': 'Connexion réussie',
+            'token': token,
+            'username': username
+        })
+    
+    return jsonify({'error': 'Identifiants incorrects'}), 401
+
+@app.route("/api/auth/verify", methods=["GET"])
+@token_required
+def verify_token():
+    """Vérifier si le token est valide"""
+    return jsonify({'message': 'Token valide'})
 
 # Ajouter un joueur
 @app.route("/api/players", methods=["POST"])
+@token_required
 def add_player():
     data = request.get_json()
     new_player = Player(
@@ -260,6 +333,7 @@ def add_player():
 
 # Modifier un joueur
 @app.route("/api/players/<int:player_id>", methods=["PUT"])
+@token_required
 def update_player(player_id):
     player = Player.query.get_or_404(player_id)
     data = request.get_json()
@@ -273,6 +347,7 @@ def update_player(player_id):
 
 # Supprimer un joueur
 @app.route("/api/players/<int:player_id>", methods=["DELETE"])
+@token_required
 def delete_player(player_id):
     player = Player.query.get_or_404(player_id)
     db.session.delete(player)
@@ -362,6 +437,97 @@ def list_nationalities():
 def list_positions():
     pos = db.session.query(Player.position).distinct().order_by(Player.position).all()
     return jsonify([p[0] for p in pos if p[0]])
+
+
+# ====================
+#  IMPORT CSV/EXCEL ADMIN
+# ====================
+
+@app.route("/api/admin/import", methods=["POST"])
+@token_required
+def import_data():
+    """Importer des joueurs depuis CSV/Excel"""
+    if 'file' not in request.files:
+        return jsonify({'error': 'Aucun fichier fourni'}), 400
+    
+    file = request.files['file']
+    
+    if file.filename == '':
+        return jsonify({'error': 'Nom de fichier vide'}), 400
+    
+    # Vérifier l'extension
+    allowed_extensions = {'.csv', '.xlsx', '.xls'}
+    file_ext = os.path.splitext(file.filename)[1].lower()
+    
+    if file_ext not in allowed_extensions:
+        return jsonify({'error': f'Format non supporté. Utilisez {", ".join(allowed_extensions)}'}), 400
+    
+    try:
+        # Lire le fichier
+        if file_ext == '.csv':
+            df = pd.read_csv(file, encoding='utf-8')
+        else:  # Excel
+            df = pd.read_excel(file, engine='openpyxl')
+        
+        # Nettoyer les colonnes
+        df.columns = df.columns.str.lower().str.replace(' ', '_').str.replace('-', '_')
+        
+        # Supprimer colonnes index
+        cols_to_drop = [col for col in df.columns if 'unnamed' in col.lower()]
+        if cols_to_drop:
+            df = df.drop(columns=cols_to_drop)
+        
+        # Vérifier colonnes obligatoires
+        required_columns = {'name', 'age', 'nationality', 'position'}
+        missing_columns = required_columns - set(df.columns)
+        
+        if missing_columns:
+            return jsonify({
+                'error': f'Colonnes manquantes : {", ".join(missing_columns)}'
+            }), 400
+        
+        # Import par batch
+        batch_size = 100
+        total = len(df)
+        imported = 0
+        errors = []
+        
+        for i in range(0, total, batch_size):
+            batch = df.iloc[i:i+batch_size]
+            
+            for idx, row in batch.iterrows():
+                try:
+                    # Vérifier si le joueur existe déjà (par nom)
+                    existing = Player.query.filter_by(name=row['name']).first()
+                    
+                    if existing:
+                        # Mise à jour
+                        for col in df.columns:
+                            if hasattr(existing, col) and pd.notna(row[col]):
+                                setattr(existing, col, row[col])
+                    else:
+                        # Création
+                        player_data = {col: row[col] for col in df.columns if hasattr(Player, col) and pd.notna(row[col])}
+                        new_player = Player(**player_data)
+                        db.session.add(new_player)
+                    
+                    imported += 1
+                    
+                except Exception as e:
+                    errors.append(f"Ligne {idx + 2}: {str(e)}")
+            
+            db.session.commit()
+        
+        return jsonify({
+            'message': f'Import terminé : {imported}/{total} joueurs',
+            'imported': imported,
+            'total': total,
+            'errors': errors[:10]  # Max 10 erreurs affichées
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Erreur lors de l\'import : {str(e)}'}), 500
 
 # ====================
 #  DÉMARRAGE SERVEUR
