@@ -38,7 +38,6 @@ export default function Navbar() {
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-
           {/* Logo */}
           <motion.div
             whileHover={{ scale: 1.05 }}
@@ -55,18 +54,10 @@ export default function Navbar() {
           {/* Navigation principale */}
           <nav className="flex items-center gap-4 text-sm font-medium">
             <NavItem to="/" label="Accueil" />
-            
-            {/* ❌ SUPPRIMÉ : Lien Équipes */}
-            {/* <NavItem to="/teams" label="Équipes" /> */}
-            
             <NavItem to="/players" label="Joueurs" />
             <NavItem to="/compare" label="Comparateur" />
-            <Link 
-              to="/admin" 
-              className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition">
-                   Admin
-            </Link>
-
+            <NavItem to="/admin" label="Admin" /> 
+            
             {/* Bouton thème sombre */}
             <motion.button
               whileTap={{ scale: 0.9 }}
