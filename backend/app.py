@@ -530,6 +530,81 @@ def import_data():
         return jsonify({'error': f'Erreur lors de l\'import : {str(e)}'}), 500
 
 # ====================
+# RÉINITIALISATION MOT DE PASSE
+# ====================
+
+# En mémoire : codes de réinitialisation
+reset_codes = {}
+
+@app.route("/api/auth/forgot-password", methods=["POST"])
+def forgot_password():
+    """Générer un code de réinitialisation"""
+    data = request.get_json()
+    username = data.get('username')
+    
+    if not username:
+        return jsonify({'error': 'Nom d\'utilisateur requis'}), 400
+    
+    # Vérifier que l'utilisateur existe
+    if username != ADMIN_USERNAME:
+        return jsonify({'error': 'Utilisateur introuvable'}), 404
+    
+    # Générer un code à 6 chiffres
+    import random
+    code = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+    
+    # Stocker avec expiration 15 min
+    reset_codes[username] = {
+        'code': code,
+        'expires': datetime.utcnow() + timedelta(minutes=15)
+    }
+    
+    # En production, envoyer par email
+    # Pour le dev, on retourne le code (À SUPPRIMER EN PROD)
+    return jsonify({
+        'message': 'Code de réinitialisation généré',
+        'code': code,  # ⚠️ SUPPRIMER EN PRODUCTION
+        'note': 'En production, ce code serait envoyé par email'
+    })
+
+@app.route("/api/auth/reset-password", methods=["POST"])
+def reset_password():
+    """Réinitialiser le mot de passe avec le code"""
+    data = request.get_json()
+    username = data.get('username')
+    code = data.get('code')
+    new_password = data.get('new_password')
+    
+    if not all([username, code, new_password]):
+        return jsonify({'error': 'Tous les champs sont requis'}), 400
+    
+    # Vérifier le code
+    if username not in reset_codes:
+        return jsonify({'error': 'Aucun code de réinitialisation trouvé'}), 404
+    
+    stored = reset_codes[username]
+    
+    # Vérifier expiration
+    if datetime.utcnow() > stored['expires']:
+        del reset_codes[username]
+        return jsonify({'error': 'Code expiré. Demandez un nouveau code'}), 400
+    
+    # Vérifier le code
+    if stored['code'] != code:
+        return jsonify({'error': 'Code incorrect'}), 400
+    
+    # Réinitialiser le mot de passe
+    global ADMIN_PASSWORD_HASH
+    ADMIN_PASSWORD_HASH = generate_password_hash(new_password)
+    
+    # Supprimer le code
+    del reset_codes[username]
+    
+    return jsonify({
+        'message': 'Mot de passe réinitialisé avec succès'
+    })
+
+# ====================
 #  DÉMARRAGE SERVEUR
 # ====================
 if __name__ == "__main__":
