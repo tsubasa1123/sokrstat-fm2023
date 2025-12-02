@@ -26,11 +26,9 @@ export default function Login() {
       const data = await response.json();
 
       if (response.ok) {
-        // Sauvegarder le token
         localStorage.setItem('admin_token', data.token);
         localStorage.setItem('admin_username', data.username);
-        
-        // Rediriger vers admin
+
         navigate('/admin');
       } else {
         setError(data.error || 'Échec de la connexion');
@@ -45,10 +43,11 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
+        
         {/* Logo/Titre */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-800 dark:text-white mb-2">
-             Connexion Admin
+            Connexion Admin
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
             SokrStat - Football Manager 2023
@@ -58,6 +57,7 @@ export default function Login() {
         {/* Formulaire */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
+
             {/* Message d'erreur */}
             {error && (
               <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-400 text-sm">
@@ -110,7 +110,7 @@ export default function Login() {
           {/* Info */}
           <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
             <p className="text-sm text-blue-800 dark:text-blue-300">
-              <strong ℹ️ Identifiants par défaut :</strong>
+              <strong>ℹ️ Identifiants par défaut :</strong>
             </p>
             <p className="text-xs text-blue-700 dark:text-blue-400 mt-1">
               • Username : <code className="bg-white dark:bg-gray-700 px-2 py-1 rounded">admin</code><br />
@@ -120,6 +120,7 @@ export default function Login() {
               ⚠️ Changez ces identifiants en production
             </p>
           </div>
+
         </div>
 
         {/* Retour */}
@@ -131,6 +132,7 @@ export default function Login() {
             ← Retour à l'accueil
           </button>
         </div>
+
       </div>
     </div>
   );
