@@ -1,8 +1,10 @@
 [build]
 builder = "NIXPACKS"
-workingDirectory = "/backend"
+
+[build.env]
+NIXPACKS_PYTHON_VERSION = "3.11.9"
 
 [deploy]
-startCommand = "cd /app/backend && gunicorn app:app"
+startCommand = "cd backend && gunicorn app:app"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
